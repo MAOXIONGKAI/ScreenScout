@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import httpx
 import json
 from playwright.async_api import async_playwright
@@ -28,22 +28,37 @@ async def fetch_movie(client: httpx.AsyncClient, movie_id: str):
             return None
 
 async def fetch_schedules(context, movie_id: str):
-    async with sem:
-        today = datetime.now(SG_TZ).strftime("%Y-%m-%d")
-        response = await context.request.get(
-            f"https://shaw.sg/internal/get_show_times"
-            f"?date={today}"
-            f"&movieId={movie_id}"
-            f"&locationId=0"
-            f"&promotionId=0",
-            headers={
-                "x-api-forward-to": "internal",
-                "x-app": "PWSM",
-            },
-        )
+    all_schedules = []
+    current_date = datetime.now(SG_TZ).date()
 
-    data = await response.json()
-    return data
+    while True:
+        date_str = current_date.strftime("%Y-%m-%d")
+        async with sem:
+            response = await context.request.get(
+                f"https://shaw.sg/internal/get_show_times"
+                f"?date={date_str}"
+                f"&movieId={movie_id}"
+                f"&locationId=0"
+                f"&promotionId=0",
+                headers={
+                    "x-api-forward-to": "internal",
+                    "x-app": "PWSM",
+                },
+            )
+
+        data = await response.json()
+
+        if not data:
+            break
+
+        if isinstance(data, list):
+            all_schedules.extend(data)
+        else:
+            all_schedules.append(data)
+
+        current_date += timedelta(days=1)
+
+    return all_schedules
 
 async def scrape_shaw_theatre():
     async with async_playwright() as p:
@@ -114,7 +129,8 @@ async def scrape_shaw_theatre():
             f.write(json.dumps(valid_schedules, indent=4))
 
         print(f"Scraped {len(valid_movies)} movies successfully!")
-        print(f"Scraped {len(valid_schedules)} schedules successfully!")
+        total_showtimes = sum(len(s) if isinstance(s, list) else 1 for s in valid_schedules)
+        print(f"Scraped {total_showtimes} schedules across {len(valid_schedules)} movies successfully!")
 
 if __name__ == "__main__":
     asyncio.run(scrape_shaw_theatre())
