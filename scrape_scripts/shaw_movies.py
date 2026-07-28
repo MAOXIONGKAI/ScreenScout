@@ -27,6 +27,23 @@ async def fetch_movie(client: httpx.AsyncClient, movie_id: str):
             print(f"{movie_id}: {e}")
             return None
 
+async def fetch_schedules(context, movie_id: str):
+    async with sem:
+        today = datetime.now(SG_TZ).strftime("%Y-%m-%d")
+        response = await context.request.get(
+            f"https://shaw.sg/internal/get_show_times"
+            f"?date={today}"
+            f"&movieId={movie_id}"
+            f"&locationId=0"
+            f"&promotionId=0",
+            headers={
+                "x-api-forward-to": "internal",
+                "x-app": "PWSM",
+            },
+        )
+
+    data = await response.json()
+    return data
 
 async def scrape_shaw_theatre():
     async with async_playwright() as p:
@@ -37,7 +54,7 @@ async def scrape_shaw_theatre():
         context = await browser.new_context()
         page = await context.new_page()
         await page.goto("https://shaw.sg/")
-        movie_ids = await page.locator("a[href^='/movie-details/']").evaluate_all(
+        release_ids = await page.locator("a[href^='/movie-details/']").evaluate_all(
                 """
                     els => [...new Set(els.map(e => e.getAttribute('href').split('/').pop()))]
                 """
@@ -64,18 +81,25 @@ async def scrape_shaw_theatre():
             cookies=cookie_dict
         ) as client:
             movies = await asyncio.gather(
-                *(fetch_movie(client, movie_id) for movie_id in movie_ids),
+                *(fetch_movie(client, release_id) for release_id in release_ids),
                 return_exceptions=True
             )
-        
-        
+            
+            movie_ids = [m["movieId"] for m in movies if isinstance(m, dict)]
+
+            schedules = await asyncio.gather(
+                *(fetch_schedules(context, movie_id) for movie_id in movie_ids),
+                return_exceptions=True
+            )
+
         await browser.close()
-        valid = [m for m in movies if isinstance(m, dict)]
+        valid_movies = [m for m in movies if isinstance(m, dict)]
+        valid_schedules = [s for s in schedules if isinstance(s, (dict, list)) and s]
 
         now = datetime.now(SG_TZ)
         coming_soon = []
         showing_now = []
-        for movie in valid:
+        for movie in valid_movies:
             release = datetime.fromisoformat(movie["releaseDate"]).replace(tzinfo=SG_TZ)
             if release > now:
                 coming_soon.append(movie["primaryTitle"])
@@ -86,8 +110,11 @@ async def scrape_shaw_theatre():
             f.write(json.dumps(coming_soon, indent=4))
         with open("showing_now.json", "w") as f:
             f.write(json.dumps(showing_now, indent=4))
+        with open("shaw_schedules.json", "w") as f:
+            f.write(json.dumps(valid_schedules, indent=4))
 
-        print(f"Scraped {len(valid)} movies successfully!")
+        print(f"Scraped {len(valid_movies)} movies successfully!")
+        print(f"Scraped {len(valid_schedules)} schedules successfully!")
 
 if __name__ == "__main__":
     asyncio.run(scrape_shaw_theatre())
