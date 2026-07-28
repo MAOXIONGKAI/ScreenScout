@@ -122,8 +122,8 @@ async def scrape_golden_village():
             f.write(json.dumps(valid_schedules, indent=4))
 
         print(f"Scraped {len(valid_movies)} movies successfully!")
-        print(f"Scraped {len(valid_schedules)} schedules successfully!")
-
+        total_showtimes = sum(len(s["data"]["locations"]) for s in valid_schedules if s.get("data"))
+        print(f"Scraped {total_showtimes} schedules across {len(valid_schedules)} movies successfully!")
 
 if __name__ == "__main__":
     asyncio.run(scrape_golden_village())
