@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import asdict
-from datetime import datetime, date, timezone
+from datetime import datetime
 import httpx
 import json
 from parser import parse_movies
@@ -63,7 +63,7 @@ async def scrape_golden_village():
         context = await browser.new_context()
 
         page = await context.new_page()
-        await page.goto("https://www.gv.com.sg/GVMovies")        
+        await page.goto("https://www.gv.com.sg/GVMovies", wait_until="domcontentloaded", timeout=60000)        
         movie_ids = await page.locator("a[href^='GVMovieDetails/movie/']").evaluate_all(
                 """
                     els => els.map(e => e.getAttribute('href').split('/').pop())
@@ -110,7 +110,10 @@ async def scrape_golden_village():
         with open("gv_schedules.json", "w") as f:
             f.write(json.dumps(valid_schedules, indent=4))
 
-        print(f"Scraped {len(valid_movies)} movies successfully!")
+        now_ms = int(datetime.now(SG_TZ).timestamp() * 1000)
+        showing_now = sum(1 for m in valid_movies if m["releaseDate"] <= now_ms)
+        coming_soon = len(valid_movies) - showing_now
+        print(f"Scraped {len(valid_movies)} movies ({showing_now} showing now, {coming_soon} coming soon)")
         total_showtimes = sum(len(s["data"]["locations"]) for s in valid_schedules if s.get("data"))
         print(f"Scraped {total_showtimes} schedules across {len(valid_schedules)} movies successfully!")
 
