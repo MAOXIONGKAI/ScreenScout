@@ -17,6 +17,32 @@ def _iso_to_date(iso_str: str) -> date:
     return datetime.fromisoformat(iso_str).date()
 
 
+def _clean_url_or_title(val):
+    if val is None:
+        return ""
+
+    if isinstance(val, list):
+        if len(val) == 0:
+            return ""
+        if all(v is None for v in val):
+            return ""
+        return ""
+
+    cleaned = str(val).strip()
+
+    if cleaned.lower() in {"", "-", "null", "none"}:
+        return ""
+
+    return cleaned
+
+
+def _clean_str(val: str | None) -> str | None:
+    if not val:
+        return None
+    cleaned = str(val).strip()
+    return cleaned if cleaned else None
+
+
 def _parse_movie(raw: dict) -> Movie:
     """Convert a raw Shaw API dict into a Movie."""
     shaw = ShawMovie(**raw)
@@ -24,15 +50,15 @@ def _parse_movie(raw: dict) -> Movie:
     return Movie(
         id=int(shaw.movieId),
         title=shaw.primaryTitle,
-        secondary_title=shaw.secondaryTitle or None,
-        description=shaw.fullSynopsis or None,
-        poster_url=shaw.posterUrl,
-        trailer_url=shaw.trailerUrl,
-        website_url=shaw.websiteUrl,
-        director=shaw.directors or None,
-        casts=shaw.casts or None,
-        genre=shaw.genre or None,
-        provider="Shaw",
+        secondary_title=_clean_url_or_title(raw.get("secondaryTitle") or getattr(shaw, "secondaryTitle", None)),
+        description=_clean_str(raw.get("fullSynopsis") or getattr(shaw, "fullSynopsis", None)),
+        poster_url=_clean_url_or_title(raw.get("posterUrl") or getattr(shaw, "posterUrl", None)),
+        trailer_url=_clean_url_or_title(raw.get("trailerUrl") or getattr(shaw, "trailerUrl", None)),
+        website_url=_clean_url_or_title(raw.get("websiteUrl") or getattr(shaw, "websiteUrl", None)),
+        director=_clean_str(raw.get("directors") or getattr(shaw, "directors", None)),
+        casts=_clean_str(raw.get("casts") or getattr(shaw, "casts", None)),
+        genre=_clean_str(raw.get("genre") or getattr(shaw, "genre", None)),
+        provider="SHAW",
         provider_movie_id=int(shaw.movieId),
         release_date=_iso_to_date(shaw.releaseDate),
         duration=shaw.duration,

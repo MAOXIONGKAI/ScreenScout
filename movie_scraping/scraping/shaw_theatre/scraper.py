@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import httpx
 import json
 from pathlib import Path
-from parser import parse_movies
+from .parser import parse_movies
 from playwright.async_api import async_playwright
 from zoneinfo import ZoneInfo
 
@@ -78,7 +78,21 @@ async def scrape_shaw_theatre():
             bypass_csp=True
         )
         page = await context.new_page()
-        await page.goto("https://shaw.sg", wait_until="domcontentloaded", timeout=60000)
+        try:
+            for attempt in range(3):
+                try:
+                    await page.goto("https://shaw.sg", wait_until="domcontentloaded", timeout=45000)
+                    break
+                except Exception as e:
+                    print(f"Shaw navigation attempt {attempt + 1} failed: {e}")
+                    if attempt == 2:
+                        print("Shaw Theatre site unreachable. Skipping Shaw scrape.")
+                        await browser.close()
+                        return [], []
+        except Exception as e:
+            print(f"Shaw scraper error: {e}")
+            await browser.close()
+            return [], []
         release_ids = await page.locator("a[href^='/movie-details/']").evaluate_all(
                 """
                     els => [...new Set(els.map(e => e.getAttribute('href').split('/').pop()))]

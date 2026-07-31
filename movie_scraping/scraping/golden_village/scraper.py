@@ -4,7 +4,7 @@ from datetime import datetime
 import httpx
 import json
 from pathlib import Path
-from parser import parse_movies
+from .parser import parse_movies
 from playwright.async_api import async_playwright
 from zoneinfo import ZoneInfo
 
