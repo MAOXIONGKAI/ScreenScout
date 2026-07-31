@@ -3,9 +3,13 @@ from dataclasses import asdict
 from datetime import datetime, timedelta
 import httpx
 import json
+from pathlib import Path
 from parser import parse_movies
 from playwright.async_api import async_playwright
 from zoneinfo import ZoneInfo
+
+OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "outputs"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 SG_TZ = ZoneInfo("Asia/Singapore")
 
@@ -117,7 +121,7 @@ async def scrape_shaw_theatre():
         valid_movies = [m for m in movies if isinstance(m, dict)]
         valid_schedules = [s for s in schedules if isinstance(s, (dict, list)) and s]
         
-        with open("shaw_schedules.json", "w") as f:
+        with open(OUTPUT_DIR / "shaw_schedules.json", "w") as f:
             f.write(json.dumps(valid_schedules, indent=4))
 
         now = datetime.now(SG_TZ)
@@ -133,10 +137,11 @@ if __name__ == "__main__":
     movies, schedules = asyncio.run(scrape_shaw_theatre())
     parsed_movies = parse_movies(movies)
 
-    with open("shaw_movies.json", "w") as f:
+    with open(OUTPUT_DIR / "shaw_movies.json", "w") as f:
         f.write(json.dumps(
             [asdict(m) for m in parsed_movies],
             indent=4,
             default=str,
         ))
+
         

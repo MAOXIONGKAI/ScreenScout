@@ -3,9 +3,13 @@ from dataclasses import asdict
 from datetime import datetime
 import httpx
 import json
+from pathlib import Path
 from parser import parse_movies
 from playwright.async_api import async_playwright
 from zoneinfo import ZoneInfo
+
+OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "outputs"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 SG_TZ = ZoneInfo("Asia/Singapore")
 
@@ -107,7 +111,7 @@ async def scrape_golden_village():
         valid_movies = [m for m in movies if isinstance(m, dict)]
         valid_schedules = [s for s in schedules if isinstance(s, dict)]
 
-        with open("gv_schedules.json", "w") as f:
+        with open(OUTPUT_DIR / "gv_schedules.json", "w") as f:
             f.write(json.dumps(valid_schedules, indent=4))
 
         now_ms = int(datetime.now(SG_TZ).timestamp() * 1000)
@@ -123,7 +127,7 @@ if __name__ == "__main__":
     movies, schedules = asyncio.run(scrape_golden_village())
     parsed_movies = parse_movies(movies)
 
-    with open("gv_movies.json", "w") as f:
+    with open(OUTPUT_DIR / "gv_movies.json", "w") as f:
         f.write(json.dumps(
             [asdict(m) for m in parsed_movies],
             indent=4,
