@@ -4,10 +4,11 @@ from pathlib import Path
 from typing import List
 
 # Import from types/movies.py (can't use 'from types.movies' due to stdlib conflict)
-_movies_path = Path(__file__).resolve().parent.parent.parent / "types" / "movies.py"
+_movies_path = Path(__file__).resolve().parent.parent / "types" / "movies.py"
 _spec = importlib.util.spec_from_file_location("movies", _movies_path)
 _movies_mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_movies_mod)
+
 GVMovie = _movies_mod.GVMovie
 Movie = _movies_mod.Movie
 
