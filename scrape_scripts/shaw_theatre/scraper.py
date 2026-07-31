@@ -1,7 +1,9 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from dataclasses import asdict
+from datetime import datetime, timedelta
 import httpx
 import json
+from parser import parse_movies
 from playwright.async_api import async_playwright
 from zoneinfo import ZoneInfo
 
@@ -66,9 +68,13 @@ async def scrape_shaw_theatre():
             headless=False,
             channel="chrome"
         )
-        context = await browser.new_context()
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 720},
+            bypass_csp=True
+        )
         page = await context.new_page()
-        await page.goto("https://shaw.sg/")
+        await page.goto("https://shaw.sg", wait_until="domcontentloaded", timeout=60000)
         release_ids = await page.locator("a[href^='/movie-details/']").evaluate_all(
                 """
                     els => [...new Set(els.map(e => e.getAttribute('href').split('/').pop()))]
@@ -110,28 +116,27 @@ async def scrape_shaw_theatre():
         await browser.close()
         valid_movies = [m for m in movies if isinstance(m, dict)]
         valid_schedules = [s for s in schedules if isinstance(s, (dict, list)) and s]
-
-        now = datetime.now(SG_TZ)
-        coming_soon = []
-        showing_now = []
-        for movie in valid_movies:
-            release = datetime.fromisoformat(movie["releaseDate"]).replace(tzinfo=SG_TZ)
-            if release > now:
-                coming_soon.append(movie)
-            else:
-                showing_now.append(movie)
         
-        with open("coming_soon.json", "w") as f:
-            f.write(json.dumps(coming_soon, indent=4))
-        with open("showing_now.json", "w") as f:
-            f.write(json.dumps(showing_now, indent=4))
         with open("shaw_schedules.json", "w") as f:
             f.write(json.dumps(valid_schedules, indent=4))
 
-        print(f"Scraped {len(valid_movies)} movies successfully!")
+        now = datetime.now(SG_TZ)
+        showing_now = sum(1 for m in valid_movies if datetime.fromisoformat(m["releaseDate"]).replace(tzinfo=SG_TZ) <= now)
+        coming_soon = len(valid_movies) - showing_now
+        print(f"Scraped {len(valid_movies)} movies ({showing_now} showing now, {coming_soon} coming soon)")
         total_showtimes = sum(len(s) if isinstance(s, list) else 1 for s in valid_schedules)
         print(f"Scraped {total_showtimes} schedules across {len(valid_schedules)} movies successfully!")
 
+        return valid_movies, valid_schedules
+
 if __name__ == "__main__":
-    asyncio.run(scrape_shaw_theatre())
+    movies, schedules = asyncio.run(scrape_shaw_theatre())
+    parsed_movies = parse_movies(movies)
+
+    with open("shaw_movies.json", "w") as f:
+        f.write(json.dumps(
+            [asdict(m) for m in parsed_movies],
+            indent=4,
+            default=str,
+        ))
         

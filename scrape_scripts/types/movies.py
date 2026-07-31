@@ -47,6 +47,31 @@ class GVMovie:
 
 
 @dataclass(slots=True)
+class ShawMovie:
+    """Shaw movie structure."""
+    trailerUrl: Optional[str]
+    posterUrl: Optional[str]
+    websiteUrl: Optional[str]
+    releaseExternalCode: Optional[str]
+    releaseDate: str
+    primaryTitle: str
+    secondaryTitle: Optional[str]
+    adviceName: str
+    adviceOnTicket: str
+    duration: int
+    classify: str
+    fullSynopsis: str
+    casts: str
+    directors: str
+    genre: str
+    language: str
+    subtitle: str
+    movieId: str
+    notice: str
+    photos: List[str]
+
+
+@dataclass(slots=True)
 class Movie:
     """Database Movie Schema."""
     id: int
