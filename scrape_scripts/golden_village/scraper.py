@@ -1,7 +1,9 @@
 import asyncio
-from datetime import datetime, timezone
+from dataclasses import asdict
+from datetime import datetime, date, timezone
 import httpx
 import json
+from parser import parse_movies
 from playwright.async_api import async_playwright
 from zoneinfo import ZoneInfo
 
@@ -105,19 +107,6 @@ async def scrape_golden_village():
         valid_movies = [m for m in movies if isinstance(m, dict)]
         valid_schedules = [s for s in schedules if isinstance(s, dict)]
 
-        now_ms = int(datetime.now(SG_TZ).timestamp() * 1000)
-        coming_soon = []
-        showing_now = []
-        for movie in valid_movies:
-            if movie["releaseDate"] > now_ms:
-                coming_soon.append(movie)
-            else:
-                showing_now.append(movie)  
-        
-        with open("coming_soon.json", "w") as f:
-            f.write(json.dumps(coming_soon, indent=4))
-        with open("showing_now.json", "w") as f:
-            f.write(json.dumps(showing_now, indent=4))
         with open("gv_schedules.json", "w") as f:
             f.write(json.dumps(valid_schedules, indent=4))
 
@@ -125,6 +114,16 @@ async def scrape_golden_village():
         total_showtimes = sum(len(s["data"]["locations"]) for s in valid_schedules if s.get("data"))
         print(f"Scraped {total_showtimes} schedules across {len(valid_schedules)} movies successfully!")
 
+        return valid_movies, valid_schedules
+
 if __name__ == "__main__":
-    asyncio.run(scrape_golden_village())
+    movies, schedules = asyncio.run(scrape_golden_village())
+    parsed_movies = parse_movies(movies)
+
+    with open("gv_movies.json", "w") as f:
+        f.write(json.dumps(
+            [asdict(m) for m in parsed_movies],
+            indent=4,
+            default=str,
+        ))
 

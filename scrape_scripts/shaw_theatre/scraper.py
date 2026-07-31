@@ -117,9 +117,9 @@ async def scrape_shaw_theatre():
         for movie in valid_movies:
             release = datetime.fromisoformat(movie["releaseDate"]).replace(tzinfo=SG_TZ)
             if release > now:
-                coming_soon.append(movie["primaryTitle"])
+                coming_soon.append(movie)
             else:
-                showing_now.append(movie["primaryTitle"])
+                showing_now.append(movie)
         
         with open("coming_soon.json", "w") as f:
             f.write(json.dumps(coming_soon, indent=4))
