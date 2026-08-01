@@ -72,23 +72,30 @@ def parse_cinema_item(raw: Dict[str, Any]) -> Cinema:
         cinemaCode=raw.get("cinemaCode"),
     )
 
-    try:
-        cinema_id = 2000 + int(gv.id or gv.locationCode or 0)
-    except (ValueError, TypeError):
-        cinema_id = 2000 + (hash(gv.id) % 1000)
-
-    full_name = gv.name or "Golden Village"
-    
-    # Extract branch name
-    if full_name.startswith("GV "):
-        brand_name = "Golden Village"
-        branch_name = full_name[3:].strip()
-    elif "Golden Village" in full_name:
-        brand_name = "Golden Village"
-        branch_name = full_name.replace("Golden Village", "").strip()
+    if raw.get("id") and str(raw["id"]).isdigit() and int(raw["id"]) >= 2000:
+        cinema_id = int(raw["id"])
     else:
-        brand_name = "Golden Village"
-        branch_name = full_name
+        try:
+            cinema_id = 2000 + int(gv.id or gv.locationCode or 0)
+        except (ValueError, TypeError):
+            cinema_id = 2000 + (hash(gv.id) % 1000)
+
+    if raw.get("branch"):
+        brand_name = raw.get("name") or "Golden Village"
+        branch_name = str(raw["branch"]).strip()
+    else:
+        full_name = gv.name or "Golden Village"
+        if full_name.startswith("GV "):
+            brand_name = "Golden Village"
+            branch_name = full_name[3:].strip()
+        elif full_name.startswith("Golden Village"):
+            brand_name = "Golden Village"
+            branch_name = full_name[14:].strip()
+            if not branch_name:
+                branch_name = full_name
+        else:
+            brand_name = "Golden Village"
+            branch_name = full_name
 
     loc_code = (gv.locationCode or gv.id or "").zfill(2)
     fallback_addr, fallback_postal = GV_LOCATION_ADDRESSES.get(loc_code, (None, "000000"))

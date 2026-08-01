@@ -111,8 +111,10 @@ async def scrape_golden_village():
         valid_movies = [m for m in movies if isinstance(m, dict)]
         valid_schedules = [s for s in schedules if isinstance(s, dict)]
 
-        with open(OUTPUT_DIR / "gv_schedules.json", "w") as f:
-            f.write(json.dumps(valid_schedules, indent=4))
+        from .parser import parse_schedules
+        parsed_schedules = parse_schedules(valid_schedules)
+        with open(OUTPUT_DIR / "gv_schedules.json", "w", encoding="utf-8") as f:
+            json.dump([asdict(s) for s in parsed_schedules], f, indent=4, default=str, ensure_ascii=False)
 
         now_ms = int(datetime.now(SG_TZ).timestamp() * 1000)
         showing_now = sum(1 for m in valid_movies if m["releaseDate"] <= now_ms)

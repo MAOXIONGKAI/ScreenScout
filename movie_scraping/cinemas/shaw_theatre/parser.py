@@ -48,27 +48,32 @@ def parse_cinema_item(raw: Dict[str, Any]) -> Cinema:
         poster=raw.get("poster"),
     )
 
-    full_name = shaw.name or "Shaw Theatre"
-    
-    # Separate brand name and branch name
-    if "Shaw Theatres" in full_name:
+    if raw.get("branch"):
         brand_name = "Shaw Theatre"
-        branch_name = full_name.replace("Shaw Theatres", "").strip()
-        if not branch_name:
-            branch_name = full_name
-    elif "Shaw Theatre" in full_name:
-        brand_name = "Shaw Theatre"
-        branch_name = full_name.replace("Shaw Theatre", "").strip()
-        if not branch_name:
-            branch_name = full_name
+        branch_name = str(raw["branch"]).strip()
     else:
-        brand_name = "Shaw Theatre"
-        branch_name = full_name
+        full_name = shaw.name or "Shaw Theatre"
+        if full_name.startswith("Shaw Theatres"):
+            brand_name = "Shaw Theatre"
+            branch_name = full_name[13:].strip()
+            if not branch_name:
+                branch_name = full_name
+        elif full_name.startswith("Shaw Theatre"):
+            brand_name = "Shaw Theatre"
+            branch_name = full_name[12:].strip()
+            if not branch_name:
+                branch_name = full_name
+        else:
+            brand_name = "Shaw Theatre"
+            branch_name = full_name
 
     address_str = clean_address(shaw.address)
     postal_code = extract_postal_code(address_str, raw.get("postalCode") or raw.get("postal_code"))
 
-    cinema_id = 1000 + int(shaw.id) if shaw.id else 1000
+    if raw.get("id") and int(raw["id"]) >= 1000:
+        cinema_id = int(raw["id"])
+    else:
+        cinema_id = 1000 + int(shaw.id) if shaw.id else 1000
 
     return Cinema(
         id=cinema_id,

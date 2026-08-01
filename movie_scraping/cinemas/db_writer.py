@@ -58,6 +58,12 @@ class DatabaseWriter:
         # Ensure table exists before upserting
         self.create_tables()
 
+        # Cleanup legacy un-namespaced cinema IDs (id < 1000) if present
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM cinemas WHERE id < 1000;")
+            conn.commit()
+
         upsert_query = """
         INSERT INTO cinemas (
             id,
