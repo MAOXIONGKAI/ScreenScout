@@ -17,7 +17,6 @@ from golden_village.parser import parse_movies as parse_gv_movies, parse_schedul
 from shaw_theatre.scraper import scrape_shaw_theatre
 from shaw_theatre.parser import parse_movies as parse_shaw_movies, parse_schedules as parse_shaw_schedules
 from db_writer import save_movies, save_schedules
-from clean.db_cleaner import clean_database
 
 
 async def main():
@@ -84,13 +83,6 @@ async def main():
             print(f"Inserted/updated {saved_schedules} schedules in database.")
         except Exception as e:
             print(f"Schedule database write skipped or failed: {e}")
-
-    # 5. Clean outdated schedules and movies from PostgreSQL
-    try:
-        cleanup_stats = clean_database()
-        print(f"\nDatabase cleanup completed: {cleanup_stats['deleted_schedules']} expired schedules, {cleanup_stats['deleted_movies']} outdated movies cleaned.")
-    except Exception as e:
-        print(f"\nDatabase cleanup skipped or failed: {e}")
 
 
 if __name__ == "__main__":
