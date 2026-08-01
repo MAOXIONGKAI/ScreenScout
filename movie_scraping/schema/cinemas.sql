@@ -1,4 +1,4 @@
-CREATE TABLE cinemas (
+CREATE TABLE IF NOT EXISTS cinemas (
     id           BIGINT PRIMARY KEY,
     name         VARCHAR(100) NOT NULL,
     branch       VARCHAR(100) NOT NULL,

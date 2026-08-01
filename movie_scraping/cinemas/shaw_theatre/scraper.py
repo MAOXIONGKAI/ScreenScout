@@ -95,12 +95,15 @@ async def scrape_shaw_cinemas() -> List[Dict[str, Any]]:
         print("Failed to scrape Shaw cinema locations.")
         return []
 
-    # Save raw outputs
+    # Parse raw cinemas into Cinema dataclass objects
+    parsed = parse_cinemas(data)
+
+    # Save parsed cinema details to outputs
     output_file = OUTPUT_DIR / "shaw_cinemas.json"
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+        json.dump([asdict(c) for c in parsed], f, indent=4, default=str, ensure_ascii=False)
         
-    print(f"Successfully scraped {len(data)} Shaw cinema locations. Saved to {output_file}")
+    print(f"Successfully scraped and parsed {len(parsed)} Shaw cinema locations. Saved to {output_file}")
     return data
 
 
