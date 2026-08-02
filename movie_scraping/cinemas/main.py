@@ -30,7 +30,9 @@ async def main():
     run_gv = provider in ("all", "gv")
     run_shaw = provider in ("all", "shaw")
 
-    print(f"Starting cinema scraping tasks for provider(s): {provider.upper()}...")
+    print("=" * 50)
+    print(f"ScreenScout Cinema Location Scraper ({provider.upper()})")
+    print("=" * 50)
 
     shaw_res, gv_res = [], []
     tasks = []
@@ -47,12 +49,12 @@ async def main():
     for key, res in zip(task_keys, results):
         if key == "shaw":
             if isinstance(res, Exception):
-                print(f"Shaw scraper failed: {res}")
+                print(f"[Shaw Theatre] Scraper failed: {res}")
             else:
                 shaw_res = res
         elif key == "gv":
             if isinstance(res, Exception):
-                print(f"Golden Village scraper failed: {res}")
+                print(f"[Golden Village] Scraper failed: {res}")
             else:
                 gv_res = res
 
@@ -62,26 +64,33 @@ async def main():
     output_dir = (CINEMAS_DIR / ".." / "outputs").resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    print("\n" + "=" * 50)
+    print("Cinema Location Summary")
+    print("=" * 50)
+
     if run_shaw:
         with open(output_dir / "shaw_cinemas.json", "w", encoding="utf-8") as f:
             json.dump([asdict(c) for c in parsed_shaw_cinemas], f, indent=4, default=str, ensure_ascii=False)
-        print(f"\nScraped {len(shaw_res)} Shaw cinema locations.")
-        print(f"Parsed {len(parsed_shaw_cinemas)} Shaw cinema locations.")
+        print(f"Shaw Theatre   : {len(parsed_shaw_cinemas)} cinema locations parsed")
 
     if run_gv:
         with open(output_dir / "gv_cinemas.json", "w", encoding="utf-8") as f:
             json.dump([asdict(c) for c in parsed_gv_cinemas], f, indent=4, default=str, ensure_ascii=False)
-        print(f"Scraped {len(gv_res)} Golden Village cinema locations.")
-        print(f"Parsed {len(parsed_gv_cinemas)} Golden Village cinema locations.")
+        print(f"Golden Village : {len(parsed_gv_cinemas)} cinema locations parsed")
 
     # Save to PostgreSQL database if connection is available
     all_parsed_cinemas = parsed_shaw_cinemas + parsed_gv_cinemas
+    print("\n" + "=" * 50)
+    print("Database Persistence")
+    print("=" * 50)
+
     if all_parsed_cinemas:
         try:
             saved_count = save_cinemas(all_parsed_cinemas)
-            print(f"\nSuccessfully inserted/updated {saved_count} cinemas into the database.")
+            print(f"Cinemas database : {saved_count} cinemas inserted/updated successfully.")
         except Exception as e:
-            print(f"\nDatabase write skipped or failed: {e}")
+            print(f"Cinemas database : write skipped or failed ({e})")
+    print("=" * 50 + "\n")
 
 
 if __name__ == "__main__":

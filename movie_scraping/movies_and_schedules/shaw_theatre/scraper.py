@@ -155,6 +155,7 @@ async def scrape_shaw_theatre() -> Tuple[List[Dict[str, Any]], List[Any]]:
         await browser.close()
 
         valid_schedules = [s for s in schedules if isinstance(s, (dict, list)) and s]
+        print(f"Successfully fetched schedules for {len(valid_schedules)} movies.")
 
         return valid_movies, valid_schedules
 
@@ -168,6 +169,11 @@ if __name__ == "__main__":
     # Parse raw dictionaries into dataclasses
     parsed_movies = parse_movies(valid_movies)
     parsed_schedules = parse_schedules(valid_schedules)
+
+    today = datetime.now(SG_TZ).date()
+    showing_count = sum(1 for m in parsed_movies if m.release_date <= today)
+    coming_count = len(parsed_movies) - showing_count
+    sched_movies_count = len(set(s.movie_id for s in parsed_schedules))
 
     # Ensure outputs directory exists
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -185,7 +191,9 @@ if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("Shaw Theatre Scraping Completed (Main Execution)")
     print("=" * 50)
+    print(f"Showing now  : {showing_count}")
+    print(f"Coming soon  : {coming_count}")
+    print(f"Total movies : {len(parsed_movies)}")
+    print(f"Schedules    : {len(parsed_schedules)} (across {sched_movies_count} movies)")
     print(f"Logged parsed JSONs to output folder: {OUTPUT_DIR}")
-    print(f"- {movies_path.name}: {len(parsed_movies)} movies")
-    print(f"- {schedules_path.name}: {len(parsed_schedules)} schedules")
     print("=" * 50 + "\n")

@@ -1,9 +1,11 @@
 import argparse
 import asyncio
 from dataclasses import asdict
+from datetime import datetime
 import json
 import sys
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Ensure local imports work cleanly regardless of CWD
 SCRAPING_DIR = Path(__file__).resolve().parent
@@ -18,6 +20,8 @@ from golden_village.parser import parse_movies as parse_gv_movies, parse_schedul
 from shaw_theatre.scraper import scrape_shaw_theatre
 from shaw_theatre.parser import parse_movies as parse_shaw_movies, parse_schedules as parse_shaw_schedules
 from db_writer import save_movies, save_schedules
+
+SG_TZ = ZoneInfo("Asia/Singapore")
 
 
 async def main():
@@ -34,7 +38,9 @@ async def main():
     run_gv = provider in ("all", "gv")
     run_shaw = provider in ("all", "shaw")
 
-    print(f"Starting scraping tasks for provider(s): {provider.upper()}...")
+    print("=" * 50)
+    print(f"ScreenScout Movie & Schedule Scraper ({provider.upper()})")
+    print("=" * 50)
 
     tasks = []
     task_keys = []
@@ -62,11 +68,6 @@ async def main():
             elif res:
                 shaw_raw_movies, shaw_raw_schedules = res
 
-    if run_gv:
-        print(f"\nScraped {len(gv_raw_movies)} Golden Village movies raw.")
-    if run_shaw:
-        print(f"Scraped {len(shaw_raw_movies)} Shaw Theatre movies raw.")
-
     # Parse movies and schedules
     gv_parsed_movies = parse_gv_movies(gv_raw_movies) if run_gv else []
     shaw_parsed_movies = parse_shaw_movies(shaw_raw_movies) if run_shaw else []
@@ -77,8 +78,35 @@ async def main():
     all_parsed_movies = gv_parsed_movies + shaw_parsed_movies
     all_parsed_schedules = gv_parsed_schedules + shaw_parsed_schedules
 
-    print(f"\nParsed {len(all_parsed_movies)} total movies (GV: {len(gv_parsed_movies)}, Shaw: {len(shaw_parsed_movies)}).")
-    print(f"Parsed {len(all_parsed_schedules)} total schedules (GV: {len(gv_parsed_schedules)}, Shaw: {len(shaw_parsed_schedules)}).")
+    today = datetime.now(SG_TZ).date()
+
+    gv_showing = sum(1 for m in gv_parsed_movies if m.release_date <= today)
+    gv_coming = len(gv_parsed_movies) - gv_showing
+
+    shaw_showing = sum(1 for m in shaw_parsed_movies if m.release_date <= today)
+    shaw_coming = len(shaw_parsed_movies) - shaw_showing
+
+    total_showing = gv_showing + shaw_showing
+    total_coming = gv_coming + shaw_coming
+
+    gv_sched_movies = len(set(s.movie_id for s in gv_parsed_schedules))
+    shaw_sched_movies = len(set(s.movie_id for s in shaw_parsed_schedules))
+    all_sched_movies = len(set(s.movie_id for s in all_parsed_schedules))
+
+    print("\n" + "=" * 50)
+    print("Scraping & Parsing Summary")
+    print("=" * 50)
+    print(f"Movies   : {len(all_parsed_movies)} total ({total_showing} showing now, {total_coming} coming soon)")
+    if run_gv:
+        print(f"  - Golden Village : {len(gv_parsed_movies)} movies ({gv_showing} showing now, {gv_coming} coming soon)")
+    if run_shaw:
+        print(f"  - Shaw Theatre   : {len(shaw_parsed_movies)} movies ({shaw_showing} showing now, {shaw_coming} coming soon)")
+
+    print(f"\nSchedules: {len(all_parsed_schedules)} total (across {all_sched_movies} movies)")
+    if run_gv:
+        print(f"  - Golden Village : {len(gv_parsed_schedules)} schedules (across {gv_sched_movies} movies)")
+    if run_shaw:
+        print(f"  - Shaw Theatre   : {len(shaw_parsed_schedules)} schedules (across {shaw_sched_movies} movies)")
 
     # Save parsed movies and schedules to outputs directory
     output_dir = (SCRAPING_DIR / ".." / "outputs").resolve()
@@ -101,19 +129,25 @@ async def main():
             json.dump([asdict(s) for s in shaw_parsed_schedules], f, indent=4, default=str, ensure_ascii=False)
 
     # Insert/update parsed movies and schedules into PostgreSQL
+    print("\n" + "=" * 50)
+    print("Database Persistence")
+    print("=" * 50)
+
     if all_parsed_movies:
         try:
             saved_movies = save_movies(all_parsed_movies)
-            print(f"\nInserted/updated {saved_movies} movies in database.")
+            print(f"Movies database    : {saved_movies} movies inserted/updated successfully.")
         except Exception as e:
-            print(f"\nMovie database write skipped or failed: {e}")
+            print(f"Movies database    : write skipped or failed ({e})")
 
     if all_parsed_schedules:
         try:
             saved_schedules = save_schedules(all_parsed_schedules)
-            print(f"Inserted/updated {saved_schedules} schedules in database.")
+            print(f"Schedules database : {saved_schedules} schedules inserted/updated successfully.")
         except Exception as e:
-            print(f"Schedule database write skipped or failed: {e}")
+            print(f"Schedules database : write skipped or failed ({e})")
+
+    print("=" * 50 + "\n")
 
 
 if __name__ == "__main__":
