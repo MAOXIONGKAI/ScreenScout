@@ -1,8 +1,9 @@
+import html
 import importlib.util
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import List, Dict, Any
-import zlib
+import re
+from typing import List, Dict, Any, Optional
 
 # Import from types/movies.py
 _movies_path = Path(__file__).resolve().parent.parent.parent / "types" / "movies.py"
@@ -53,6 +54,21 @@ GV_LOCATION_ID_TO_CINEMA_ID = {
 }
 
 
+def _clean_html_text(text: Optional[str]) -> Optional[str]:
+    """Strip HTML tags, unescape HTML entities, and normalize whitespace."""
+    if not text:
+        return None
+    # Unescape HTML entities (e.g. &amp;, &nbsp;, &lt;, &gt;, &#39;)
+    text = html.unescape(text)
+    # Replace block / line break tags (both opening and closing) with spaces to prevent words merging
+    text = re.sub(r"</?(br|p|div|li)[^>]*>", " ", text, flags=re.IGNORECASE)
+    # Strip remaining HTML tags
+    text = re.sub(r"<[^>]+>", "", text)
+    # Normalize multiple whitespace into a single clean space
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    return cleaned if cleaned else None
+
+
 def _epoch_ms_to_date(epoch_ms: int) -> date:
     """Convert a millisecond epoch timestamp to a date."""
     return datetime.fromtimestamp(epoch_ms / 1000, tz=timezone.utc).date()
@@ -71,7 +87,7 @@ def _parse_movie(raw: dict) -> Movie:
     return Movie(
         id=int(gv.filmCd),
         title=gv.filmTitle,
-        description=gv.synopsis or None,
+        description=_clean_html_text(gv.synopsis),
         poster_url=gv.imgLink or None,
         trailer_url=gv.trailerLink,
         website_url=gv.websiteLink,
@@ -150,6 +166,7 @@ def parse_schedules(raw_schedules: List[Dict[str, Any]]) -> List[Schedule]:
                     hall = t_item.get("hallNumber") or ""
 
                     # Generate deterministic integer schedule ID
+                    import zlib
                     key_str = f"GV_{cinema_id}_{movie_id}_{start_date}_{start_time}_{hall}_{show_date_ms}"
                     sched_id = zlib.crc32(key_str.encode("utf-8"))
 

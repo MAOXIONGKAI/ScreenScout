@@ -1,7 +1,9 @@
+import html
 import importlib.util
 from datetime import date, datetime
 from pathlib import Path
-from typing import List, Dict, Any, Union
+import re
+from typing import List, Dict, Any, Union, Optional
 
 # Import from types/movies.py
 _movies_path = Path(__file__).resolve().parent.parent.parent / "types" / "movies.py"
@@ -17,6 +19,21 @@ _spec_sched = importlib.util.spec_from_file_location("schedules", _schedules_pat
 _schedules_mod = importlib.util.module_from_spec(_spec_sched)
 _spec_sched.loader.exec_module(_schedules_mod)
 Schedule = _schedules_mod.Schedule
+
+
+def _clean_html_text(text: Optional[str]) -> Optional[str]:
+    """Strip HTML tags, unescape HTML entities, and normalize whitespace."""
+    if not text:
+        return None
+    # Unescape HTML entities (e.g. &amp;, &nbsp;, &lt;, &gt;, &#39;)
+    text = html.unescape(text)
+    # Replace block / line break tags (both opening and closing) with spaces to prevent words merging
+    text = re.sub(r"</?(br|p|div|li)[^>]*>", " ", text, flags=re.IGNORECASE)
+    # Strip remaining HTML tags
+    text = re.sub(r"<[^>]+>", "", text)
+    # Normalize multiple whitespace into a single clean space
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    return cleaned if cleaned else None
 
 
 def _iso_to_date(iso_str: str) -> date:
@@ -64,7 +81,7 @@ def _clean_url_or_title(val):
     return cleaned
 
 
-def _clean_str(val: str | None) -> str | None:
+def _clean_str(val: Optional[str]) -> Optional[str]:
     if not val:
         return None
     cleaned = str(val).strip()
@@ -74,12 +91,13 @@ def _clean_str(val: str | None) -> str | None:
 def _parse_movie(raw: dict) -> Movie:
     """Convert a raw Shaw API dict into a Movie."""
     shaw = ShawMovie(**raw)
+    raw_synopsis = raw.get("fullSynopsis") or getattr(shaw, "fullSynopsis", None)
 
     return Movie(
         id=int(shaw.movieId),
         title=shaw.primaryTitle,
         secondary_title=_clean_url_or_title(raw.get("secondaryTitle") or getattr(shaw, "secondaryTitle", None)),
-        description=_clean_str(raw.get("fullSynopsis") or getattr(shaw, "fullSynopsis", None)),
+        description=_clean_html_text(raw_synopsis),
         poster_url=_clean_url_or_title(raw.get("posterUrl") or getattr(shaw, "posterUrl", None)),
         trailer_url=_clean_url_or_title(raw.get("trailerUrl") or getattr(shaw, "trailerUrl", None)),
         website_url=_clean_url_or_title(raw.get("websiteUrl") or getattr(shaw, "websiteUrl", None)),

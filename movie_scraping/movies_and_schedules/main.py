@@ -80,15 +80,23 @@ async def main():
     print(f"\nParsed {len(all_parsed_movies)} total movies (GV: {len(gv_parsed_movies)}, Shaw: {len(shaw_parsed_movies)}).")
     print(f"Parsed {len(all_parsed_schedules)} total schedules (GV: {len(gv_parsed_schedules)}, Shaw: {len(shaw_parsed_schedules)}).")
 
-    # Save parsed schedules to outputs directory
+    # Save parsed movies and schedules to outputs directory
     output_dir = (SCRAPING_DIR / ".." / "outputs").resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if run_gv:
+    if gv_parsed_movies:
+        with open(output_dir / "gv_movies.json", "w", encoding="utf-8") as f:
+            json.dump([asdict(m) for m in gv_parsed_movies], f, indent=4, default=str, ensure_ascii=False)
+
+    if shaw_parsed_movies:
+        with open(output_dir / "shaw_movies.json", "w", encoding="utf-8") as f:
+            json.dump([asdict(m) for m in shaw_parsed_movies], f, indent=4, default=str, ensure_ascii=False)
+
+    if gv_parsed_schedules:
         with open(output_dir / "gv_schedules.json", "w", encoding="utf-8") as f:
             json.dump([asdict(s) for s in gv_parsed_schedules], f, indent=4, default=str, ensure_ascii=False)
 
-    if run_shaw:
+    if shaw_parsed_schedules:
         with open(output_dir / "shaw_schedules.json", "w", encoding="utf-8") as f:
             json.dump([asdict(s) for s in shaw_parsed_schedules], f, indent=4, default=str, ensure_ascii=False)
 
