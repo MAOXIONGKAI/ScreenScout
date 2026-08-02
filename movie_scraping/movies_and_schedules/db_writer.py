@@ -1,7 +1,9 @@
 import importlib.util
+import json
 import os
 from datetime import datetime
 from pathlib import Path
+import sys
 from typing import List, Optional
 import psycopg2
 from psycopg2.extras import execute_values
@@ -23,6 +25,8 @@ Schedule = _schedules_mod.Schedule
 # Centralized SQL schema paths
 MOVIES_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema" / "movies.sql"
 SCHEDULES_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema" / "schedules.sql"
+CINEMAS_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema" / "cinemas.sql"
+OUTPUTS_DIR = Path(__file__).resolve().parent.parent / "outputs"
 
 DEFAULT_DB_URI = os.getenv(
     "DATABASE_URL",
@@ -76,14 +80,68 @@ class DatabaseWriter:
         return psycopg2.connect(self.db_uri)
 
     def create_tables(self) -> None:
-        """Create movies and schedules tables and indexes using central schema SQL files."""
+        """Create cinemas, movies, and schedules tables using central schema SQL files."""
         with self._get_connection() as conn:
             with conn.cursor() as cur:
+                if CINEMAS_SCHEMA_PATH.exists():
+                    cur.execute(CINEMAS_SCHEMA_PATH.read_text(encoding="utf-8"))
                 if self.movies_schema_path.exists():
                     cur.execute(self.movies_schema_path.read_text(encoding="utf-8"))
                 if self.schedules_schema_path.exists():
                     cur.execute(self.schedules_schema_path.read_text(encoding="utf-8"))
             conn.commit()
+
+    def _ensure_cinemas_exist(self, required_cinema_ids: set) -> None:
+        """Check if required cinema IDs exist in database; if missing, automatically populate cinemas table."""
+        if not required_cinema_ids:
+            return
+
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM cinemas;")
+                existing_ids = {row[0] for row in cur.fetchall()}
+
+        missing_ids = required_cinema_ids - existing_ids
+        if not missing_ids:
+            return
+
+        print(f"[DatabaseWriter] Missing {len(missing_ids)} cinema locations in database. Auto-populating cinemas table...")
+
+        # Try populating from cinemas db_writer / scraper
+        try:
+            cinemas_dir = Path(__file__).resolve().parent.parent / "cinemas"
+            if str(cinemas_dir) not in sys.path:
+                sys.path.insert(0, str(cinemas_dir))
+            from cinemas.db_writer import save_cinemas
+            from cinemas.golden_village.parser import parse_cinemas as parse_gv_cinemas
+            from cinemas.shaw_theatre.parser import parse_cinemas as parse_shaw_cinemas
+
+            gv_json = OUTPUTS_DIR / "gv_cinemas.json"
+            shaw_json = OUTPUTS_DIR / "shaw_cinemas.json"
+
+            all_cinemas = []
+            if gv_json.exists():
+                with open(gv_json, "r", encoding="utf-8") as f:
+                    all_cinemas.extend(parse_gv_cinemas(json.load(f)))
+            if shaw_json.exists():
+                with open(shaw_json, "r", encoding="utf-8") as f:
+                    all_cinemas.extend(parse_shaw_cinemas(json.load(f)))
+
+            if not all_cinemas:
+                # If cached JSONs don't exist, run scrapers dynamically
+                import asyncio
+                from cinemas.golden_village.scraper import scrape_golden_village_cinemas
+                from cinemas.shaw_theatre.scraper import scrape_shaw_cinemas
+
+                raw_gv = asyncio.run(scrape_golden_village_cinemas())
+                raw_shaw = asyncio.run(scrape_shaw_cinemas())
+                all_cinemas = parse_gv_cinemas(raw_gv) + parse_shaw_cinemas(raw_shaw)
+
+            if all_cinemas:
+                save_cinemas(all_cinemas, db_uri=self.db_uri)
+                print(f"[DatabaseWriter] Auto-populated {len(all_cinemas)} cinema locations into database.")
+        except Exception as e:
+            print(f"[DatabaseWriter] Auto-populating cinemas warning: {e}")
 
     def upsert_movies(self, movies: List[Movie]) -> int:
         """Insert or update a list of parsed Movie objects in the PostgreSQL movies table.
@@ -190,6 +248,10 @@ class DatabaseWriter:
             return 0
 
         self.create_tables()
+
+        # Ensure required cinema IDs exist before inserting schedules
+        required_cinema_ids = {s.cinema_id for s in schedules if s.cinema_id}
+        self._ensure_cinemas_exist(required_cinema_ids)
 
         upsert_query = """
         INSERT INTO schedules (

@@ -35,6 +35,7 @@ scrape-cinemas: ## Scrape and store cinema locations (Golden Village & Shaw)
 	$(PYTHON) movie_scraping/cinemas/main.py
 
 scrape-movies: ## Scrape and store movies and showtime schedules (Golden Village & Shaw)
+	$(PYTHON) movie_scraping/cinemas/main.py
 	$(PYTHON) movie_scraping/movies_and_schedules/main.py
 
 scrape-gv: ## Scrape cinemas, movies, and schedules for Golden Village only
