@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 from dataclasses import asdict
 import json
@@ -16,40 +17,62 @@ from db_writer import save_cinemas
 
 
 async def main():
-    print("Starting cinema scraping tasks for Shaw Theatre and Golden Village...")
-
-    results = await asyncio.gather(
-        scrape_shaw_cinemas(),
-        scrape_golden_village_cinemas(),
-        return_exceptions=True,
+    parser = argparse.ArgumentParser(description="Scrape cinema locations for Golden Village and/or Shaw Theatre.")
+    parser.add_argument(
+        "--provider",
+        choices=["all", "gv", "shaw"],
+        default="all",
+        help="Scrape specific provider ('gv', 'shaw', or 'all'). Default: 'all'",
     )
+    args = parser.parse_args()
+    provider = args.provider.lower()
 
-    shaw_res, gv_res = results
+    run_gv = provider in ("all", "gv")
+    run_shaw = provider in ("all", "shaw")
 
-    if isinstance(shaw_res, Exception):
-        print(f"Shaw scraper failed: {shaw_res}")
-        shaw_res = []
+    print(f"Starting cinema scraping tasks for provider(s): {provider.upper()}...")
 
-    if isinstance(gv_res, Exception):
-        print(f"Golden Village scraper failed: {gv_res}")
-        gv_res = []
+    shaw_res, gv_res = [], []
+    tasks = []
+    task_keys = []
+    if run_shaw:
+        tasks.append(scrape_shaw_cinemas())
+        task_keys.append("shaw")
+    if run_gv:
+        tasks.append(scrape_golden_village_cinemas())
+        task_keys.append("gv")
 
-    parsed_shaw_cinemas = parse_shaw_cinemas(shaw_res)
-    parsed_gv_cinemas = parse_gv_cinemas(gv_res)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for key, res in zip(task_keys, results):
+        if key == "shaw":
+            if isinstance(res, Exception):
+                print(f"Shaw scraper failed: {res}")
+            else:
+                shaw_res = res
+        elif key == "gv":
+            if isinstance(res, Exception):
+                print(f"Golden Village scraper failed: {res}")
+            else:
+                gv_res = res
+
+    parsed_shaw_cinemas = parse_shaw_cinemas(shaw_res) if run_shaw else []
+    parsed_gv_cinemas = parse_gv_cinemas(gv_res) if run_gv else []
 
     output_dir = (CINEMAS_DIR / ".." / "outputs").resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(output_dir / "shaw_cinemas.json", "w", encoding="utf-8") as f:
-        json.dump([asdict(c) for c in parsed_shaw_cinemas], f, indent=4, default=str, ensure_ascii=False)
+    if run_shaw:
+        with open(output_dir / "shaw_cinemas.json", "w", encoding="utf-8") as f:
+            json.dump([asdict(c) for c in parsed_shaw_cinemas], f, indent=4, default=str, ensure_ascii=False)
+        print(f"\nScraped {len(shaw_res)} Shaw cinema locations.")
+        print(f"Parsed {len(parsed_shaw_cinemas)} Shaw cinema locations.")
 
-    with open(output_dir / "gv_cinemas.json", "w", encoding="utf-8") as f:
-        json.dump([asdict(c) for c in parsed_gv_cinemas], f, indent=4, default=str, ensure_ascii=False)
-
-    print(f"\nScraped {len(shaw_res)} Shaw cinema locations.")
-    print(f"Parsed {len(parsed_shaw_cinemas)} Shaw cinema locations.")
-    print(f"Scraped {len(gv_res)} Golden Village cinema locations.")
-    print(f"Parsed {len(parsed_gv_cinemas)} Golden Village cinema locations.")
+    if run_gv:
+        with open(output_dir / "gv_cinemas.json", "w", encoding="utf-8") as f:
+            json.dump([asdict(c) for c in parsed_gv_cinemas], f, indent=4, default=str, ensure_ascii=False)
+        print(f"Scraped {len(gv_res)} Golden Village cinema locations.")
+        print(f"Parsed {len(parsed_gv_cinemas)} Golden Village cinema locations.")
 
     # Save to PostgreSQL database if connection is available
     all_parsed_cinemas = parsed_shaw_cinemas + parsed_gv_cinemas
