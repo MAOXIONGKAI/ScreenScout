@@ -1,144 +1,196 @@
 import asyncio
 from dataclasses import asdict
 from datetime import datetime
-import httpx
 import json
 from pathlib import Path
-try:
-    from .parser import parse_movies
-except ImportError:
-    from parser import parse_movies
-from playwright.async_api import async_playwright
+from typing import Any, Dict, List, Optional, Set, Tuple
 from zoneinfo import ZoneInfo
 
-OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "outputs"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+import httpx
+from playwright.async_api import async_playwright
+
+try:
+    from .parser import parse_movies, parse_schedules
+except ImportError:
+    from parser import parse_movies, parse_schedules
+
+# ============================================================
+# Configuration & Constants
+# ============================================================
+OUTPUT_DIR = (Path(__file__).resolve().parent.parent.parent / "outputs").resolve()
 
 SG_TZ = ZoneInfo("Asia/Singapore")
+BASE_URL = "https://www.gv.com.sg"
 
-sem = asyncio.Semaphore(5)
-film_info_api = "https://www.gv.com.sg/.gv-api/filminfo"
-async def fetch_movie(client: httpx.AsyncClient, movie_id: str):
-    async with sem:
-        try:
-            response = await client.post(
-                film_info_api,
-                json={"filmCode": movie_id},
-            )
-            response.raise_for_status()
+FILM_INFO_API = f"{BASE_URL}/.gv-api/filminfo"
+SCHEDULE_API = f"{BASE_URL}/.gv-api/sessionforfilm"
+SHOWING_NOW_API = f"{BASE_URL}/.gv-api/homenowshowing"
+COMING_SOON_API = f"{BASE_URL}/.gv-api/homecomingsoon"
 
-            data = response.json()
+SEM = asyncio.Semaphore(5)
 
-            if not data.get("success"):
-                print(f"{movie_id}: {data.get('errorMessage')}")
-                return None
 
-            return data["data"]
+# ============================================================
+# Utilities
+# ============================================================
+def extract_film_codes(data: Any) -> Set[str]:
+    """Recursively search a JSON object/list for `filmCd` fields."""
+    result: Set[str] = set()
 
-        except Exception as e:
-            print(f"{movie_id}: {e}")
+    def walk(obj: Any) -> None:
+        if isinstance(obj, dict):
+            film_cd = obj.get("filmCd")
+            if film_cd is not None:
+                result.add(str(film_cd))
+            for value in obj.values():
+                walk(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                walk(item)
+
+    walk(data)
+    return result
+
+
+async def post_json(client: httpx.AsyncClient, url: str, payload: Optional[Dict[str, Any]] = None) -> Any:
+    """Generic HTTP POST helper guarded by semaphore."""
+    async with SEM:
+        response = await client.post(url, json=payload)
+        response.raise_for_status()
+        return response.json()
+
+
+# ============================================================
+# Scraper API Functions
+# ============================================================
+async def fetch_movie(client: httpx.AsyncClient, movie_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch complete movie information from GV filminfo API."""
+    try:
+        data = await post_json(client, FILM_INFO_API, {"filmCode": movie_id})
+        if not data.get("success"):
+            print(f"[{movie_id}] Error: {data.get('errorMessage')}")
             return None
+        return data.get("data")
+    except Exception as e:
+        print(f"[{movie_id}] Exception fetching info: {e}")
+        return None
 
-schedule_info_api = "https://www.gv.com.sg/.gv-api/sessionforfilm"
-async def fetch_schedules(client: httpx.AsyncClient, movie_id: str):
-    async with sem:
-        try:
-            response = await client.post(
-                schedule_info_api,
-                json={"filmCode": movie_id},
-            )
-            response.raise_for_status()
 
-            data = response.json()
+async def fetch_movie_ids(client: httpx.AsyncClient) -> Dict[str, Set[str]]:
+    """Fetch movie IDs from both Now Showing and Coming Soon endpoints."""
+    print("Fetching showing now movies...")
+    showing_now_data = await post_json(client, SHOWING_NOW_API)
 
-            if not data:
-                print(f"{movie_id}: Failed to retrieve schedule info.")
-                return None
+    print("Fetching coming soon movies...")
+    coming_soon_data = await post_json(client, COMING_SOON_API)
 
-            return data
+    showing_now_ids = extract_film_codes(showing_now_data)
+    coming_soon_ids = extract_film_codes(coming_soon_data)
+    all_ids = showing_now_ids | coming_soon_ids
 
-        except Exception as e:
-            print(f"{movie_id} schedule: {e}")
+    print(f"Showing now: {len(showing_now_ids)}")
+    print(f"Coming soon: {len(coming_soon_ids)}")
+    print(f"Total unique movies: {len(all_ids)}")
+
+    return {
+        "showing_now": showing_now_ids,
+        "coming_soon": coming_soon_ids,
+        "all": all_ids,
+    }
+
+
+async def fetch_schedules(client: httpx.AsyncClient, movie_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch showtime schedule for a movie from GV sessionforfilm API."""
+    try:
+        data = await post_json(client, SCHEDULE_API, {"filmCode": movie_id})
+        if not data:
+            print(f"[{movie_id}] Failed to retrieve schedule info.")
             return None
+        return data
+    except Exception as e:
+        print(f"[{movie_id}] Schedule exception: {e}")
+        return None
 
-async def scrape_golden_village():
+
+# ============================================================
+# Main Scraper Pipeline
+# ============================================================
+async def scrape_golden_village() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Main async pipeline to scrape Golden Village raw movies and showtimes."""
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=False,
-            channel="chrome"
-        )
+        browser = await p.chromium.launch(headless=False, channel="chrome")
         context = await browser.new_context()
-
         page = await context.new_page()
-        await page.goto("https://www.gv.com.sg/GVMovies", wait_until="domcontentloaded", timeout=60000)        
-        movie_ids = await page.locator("a[href^='GVMovieDetails/movie/']").evaluate_all(
-                """
-                    els => els.map(e => e.getAttribute('href').split('/').pop())
-                """
-            )
+
+        print("Opening Golden Village...")
+        await page.goto(BASE_URL, wait_until="domcontentloaded", timeout=60000)
 
         cookies = await context.cookies()
-        cookie_dict = {
-            c["name"]: c["value"]
-            for c in cookies
-        }
+        cookie_dict = {c["name"]: c["value"] for c in cookies}
+        user_agent = await page.evaluate("navigator.userAgent")
+
         headers = {
+            "User-Agent": user_agent,
+            "Accept": "application/json, text/plain, */*",
+            "Origin": BASE_URL,
+            "Referer": f"{BASE_URL}/",
             "x_developer": "ENOVAX",
-            "Origin": "https://www.gv.com.sg",
-            "Referer": "https://www.gv.com.sg/GVMovieDetails",
-            "User-Agent": await page.evaluate("navigator.userAgent"),
         }
-        
-        async with httpx.AsyncClient(
-            timeout=30,
-            cookies=cookie_dict,
-            headers=headers
-            ) as client:
-            movies = await asyncio.gather(
-                *(fetch_movie(client, movie_id) for movie_id in movie_ids),
-                return_exceptions=True
-            )
 
-        async with httpx.AsyncClient(
-            timeout=30,
-            cookies=cookie_dict,
-            headers=headers
-            ) as client:
-            schedules = await asyncio.gather(
-                *(fetch_schedules(client, movie_id) for movie_id in movie_ids),
-                return_exceptions=True
+        async with httpx.AsyncClient(timeout=30, cookies=cookie_dict, headers=headers) as client:
+            # 1. Fetch movie IDs
+            id_groups = await fetch_movie_ids(client)
+            all_movie_ids = id_groups["all"]
+
+            # 2. Fetch movie details
+            print(f"Fetching details for {len(all_movie_ids)} movies...")
+            movies_res = await asyncio.gather(
+                *(fetch_movie(client, m_id) for m_id in all_movie_ids),
+                return_exceptions=True,
             )
-        
-        
+            valid_movies = [m for m in movies_res if isinstance(m, dict)]
+            print(f"Successfully fetched {len(valid_movies)} movie details.")
+
+            # 3. Fetch schedules
+            print("Fetching schedules...")
+            schedules_res = await asyncio.gather(
+                *(fetch_schedules(client, m_id) for m_id in all_movie_ids),
+                return_exceptions=True,
+            )
+            valid_schedules = [s for s in schedules_res if isinstance(s, dict)]
+
         await browser.close()
-        valid_movies = [m for m in movies if isinstance(m, dict)]
-        valid_schedules = [s for s in schedules if isinstance(s, dict)]
 
-        try:
-            from .parser import parse_schedules
-        except ImportError:
-            from parser import parse_schedules
-        parsed_schedules = parse_schedules(valid_schedules)
-        with open(OUTPUT_DIR / "gv_schedules.json", "w", encoding="utf-8") as f:
-            json.dump([asdict(s) for s in parsed_schedules], f, indent=4, default=str, ensure_ascii=False)
+    return valid_movies, valid_schedules
 
-        now_ms = int(datetime.now(SG_TZ).timestamp() * 1000)
-        showing_now = sum(1 for m in valid_movies if m["releaseDate"] <= now_ms)
-        coming_soon = len(valid_movies) - showing_now
-        print(f"Scraped {len(valid_movies)} movies ({showing_now} showing now, {coming_soon} coming soon)")
-        total_showtimes = sum(len(s["data"]["locations"]) for s in valid_schedules if s.get("data"))
-        print(f"Scraped {total_showtimes} schedules across {len(valid_schedules)} movies successfully!")
 
-        return valid_movies, valid_schedules
-
+# ============================================================
+# Entry Point
+# ============================================================
 if __name__ == "__main__":
-    movies, schedules = asyncio.run(scrape_golden_village())
-    parsed_movies = parse_movies(movies)
+    valid_movies, valid_schedules = asyncio.run(scrape_golden_village())
 
-    with open(OUTPUT_DIR / "gv_movies.json", "w") as f:
-        f.write(json.dumps(
-            [asdict(m) for m in parsed_movies],
-            indent=4,
-            default=str,
-        ))
+    # Parse raw dictionaries into dataclasses
+    parsed_movies = parse_movies(valid_movies)
+    parsed_schedules = parse_schedules(valid_schedules)
 
+    # Ensure outputs directory exists
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    movies_path = OUTPUT_DIR / "gv_movies.json"
+    schedules_path = OUTPUT_DIR / "gv_schedules.json"
+
+    # Save parsed JSON files
+    with open(movies_path, "w", encoding="utf-8") as f:
+        json.dump([asdict(m) for m in parsed_movies], f, indent=4, ensure_ascii=False, default=str)
+
+    with open(schedules_path, "w", encoding="utf-8") as f:
+        json.dump([asdict(s) for s in parsed_schedules], f, indent=4, ensure_ascii=False, default=str)
+
+    print("\n" + "=" * 50)
+    print("Golden Village Scraping Completed (Main Execution)")
+    print("=" * 50)
+    print(f"Logged parsed JSONs to output folder: {OUTPUT_DIR}")
+    print(f"- {movies_path.name}: {len(parsed_movies)} movies")
+    print(f"- {schedules_path.name}: {len(parsed_schedules)} schedules")
+    print("=" * 50 + "\n")
