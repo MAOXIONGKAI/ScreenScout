@@ -6,7 +6,10 @@ from typing import List, Dict, Any, Optional
 import urllib.request
 import urllib.error
 
-from .parser import parse_cinemas
+try:
+    from .parser import parse_cinemas
+except ImportError:
+    from parser import parse_cinemas
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "outputs"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

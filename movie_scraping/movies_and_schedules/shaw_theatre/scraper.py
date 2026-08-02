@@ -4,7 +4,10 @@ from datetime import datetime, timedelta
 import httpx
 import json
 from pathlib import Path
-from .parser import parse_movies
+try:
+    from .parser import parse_movies
+except ImportError:
+    from parser import parse_movies
 from playwright.async_api import async_playwright
 from zoneinfo import ZoneInfo
 
@@ -135,7 +138,10 @@ async def scrape_shaw_theatre():
         valid_movies = [m for m in movies if isinstance(m, dict)]
         valid_schedules = [s for s in schedules if isinstance(s, (dict, list)) and s]
         
-        from .parser import parse_schedules
+        try:
+            from .parser import parse_schedules
+        except ImportError:
+            from parser import parse_schedules
         parsed_schedules = parse_schedules(valid_schedules)
         with open(OUTPUT_DIR / "shaw_schedules.json", "w", encoding="utf-8") as f:
             json.dump([asdict(s) for s in parsed_schedules], f, indent=4, default=str, ensure_ascii=False)
