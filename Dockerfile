@@ -2,12 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies required for Playwright and psycopg2
+# Install system dependencies required for Playwright, PostgreSQL, and Xvfb virtual framebuffers
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gnupg \
     libpq-dev \
     gcc \
+    xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies

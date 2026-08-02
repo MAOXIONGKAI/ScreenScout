@@ -2,7 +2,9 @@ import asyncio
 from dataclasses import asdict
 from datetime import datetime, timedelta
 import json
+import os
 from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
@@ -24,6 +26,16 @@ BASE_URL = "https://shaw.sg"
 FILM_INFO_API = f"{BASE_URL}/internal/get_movie_release?id="
 
 SEM = asyncio.Semaphore(5)
+HEADLESS = os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes")
+
+# Auto-start virtual display on Linux if running in non-headless mode
+if not HEADLESS and sys.platform.startswith("linux"):
+    try:
+        from pyvirtualdisplay import Display
+        display = Display(visible=0, size=(1280, 720))
+        display.start()
+    except Exception as e:
+        print(f"[VirtualDisplay] Warning: {e}")
 
 
 # ============================================================
@@ -81,7 +93,7 @@ async def fetch_schedules(context: Any, movie_id: str) -> List[Any]:
 async def scrape_shaw_theatre() -> Tuple[List[Dict[str, Any]], List[Any]]:
     """Main async pipeline to scrape Shaw Theatre movies and showtimes."""
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False, channel="chrome")
+        browser = await p.chromium.launch(headless=HEADLESS)
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
             viewport={"width": 1280, "height": 720},

@@ -2,7 +2,9 @@ import asyncio
 from dataclasses import asdict
 from datetime import datetime
 import json
+import os
 from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional, Set, Tuple
 from zoneinfo import ZoneInfo
 
@@ -28,6 +30,16 @@ SHOWING_NOW_API = f"{BASE_URL}/.gv-api/homenowshowing"
 COMING_SOON_API = f"{BASE_URL}/.gv-api/homecomingsoon"
 
 SEM = asyncio.Semaphore(5)
+HEADLESS = os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes")
+
+# Auto-start virtual display on Linux if running in non-headless mode
+if not HEADLESS and sys.platform.startswith("linux"):
+    try:
+        from pyvirtualdisplay import Display
+        display = Display(visible=0, size=(1280, 720))
+        display.start()
+    except Exception as e:
+        print(f"[VirtualDisplay] Warning: {e}")
 
 
 # ============================================================
@@ -118,8 +130,12 @@ async def fetch_schedules(client: httpx.AsyncClient, movie_id: str) -> Optional[
 async def scrape_golden_village() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Main async pipeline to scrape Golden Village raw movies and showtimes."""
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False, channel="chrome")
-        context = await browser.new_context()
+        browser = await p.chromium.launch(headless=HEADLESS)
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 720},
+            bypass_csp=True,
+        )
         page = await context.new_page()
 
         print("Opening Golden Village...")
@@ -127,7 +143,7 @@ async def scrape_golden_village() -> Tuple[List[Dict[str, Any]], List[Dict[str, 
 
         cookies = await context.cookies()
         cookie_dict = {c["name"]: c["value"] for c in cookies}
-        user_agent = await page.evaluate("navigator.userAgent")
+        user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
 
         headers = {
             "User-Agent": user_agent,
