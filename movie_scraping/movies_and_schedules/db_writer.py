@@ -3,11 +3,12 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-<<<<<<< Updated upstream
 import sys
-=======
-from dotenv import load_dotenv
->>>>>>> Stashed changes
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 from typing import List, Optional
 import psycopg2
 from psycopg2.extras import execute_values

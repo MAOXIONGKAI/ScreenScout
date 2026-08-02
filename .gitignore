@@ -1,1 +1,25 @@
+# Environment & credentials
 .env
+.env.*
+
+# Python virtual environment
+venv/
+ENV/
+env/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Generated scraper output data files
+movie_scraping/outputs/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
