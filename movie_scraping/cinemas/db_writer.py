@@ -1,6 +1,7 @@
 import importlib.util
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 from typing import List, Optional
 import psycopg2
 from psycopg2.extras import execute_values
@@ -14,6 +15,8 @@ Cinema = _cineams_mod.Cinema
 
 # Centralized SQL schema path
 SCHEMA_FILE_PATH = Path(__file__).resolve().parent.parent / "schema" / "cinemas.sql"
+
+load_dotenv()
 
 DEFAULT_DB_URI = os.getenv(
     "DATABASE_URL",

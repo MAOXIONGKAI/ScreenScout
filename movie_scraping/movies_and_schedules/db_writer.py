@@ -3,7 +3,11 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+<<<<<<< Updated upstream
 import sys
+=======
+from dotenv import load_dotenv
+>>>>>>> Stashed changes
 from typing import List, Optional
 import psycopg2
 from psycopg2.extras import execute_values
@@ -27,6 +31,8 @@ MOVIES_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema" / "movies
 SCHEDULES_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema" / "schedules.sql"
 CINEMAS_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema" / "cinemas.sql"
 OUTPUTS_DIR = Path(__file__).resolve().parent.parent / "outputs"
+
+load_dotenv()
 
 DEFAULT_DB_URI = os.getenv(
     "DATABASE_URL",
