@@ -11,7 +11,7 @@ if [ $# -eq 0 ]; then
 fi
 
 case "$1" in
-  setup|db-up|db-down|db-logs|db-psql|scrape-cinemas|scrape-movies|scrape-gv|scrape-shaw|clean-db|run-all|help)
+  setup|db-up|db-down|db-logs|db-psql|scrape-cinemas|scrape-movies|scrape-gv|scrape-shaw|clean-db|run-all|docker-scrape-cinemas|docker-scrape-movies|docker-scrape-gv|docker-scrape-shaw|docker-clean-db|docker-run-all|help)
     make "$1"
     ;;
   *)

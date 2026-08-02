@@ -4,38 +4,48 @@ The most reliable movie aggregation platform in Singapore capable of providing r
 
 ## Quick Start & Task Automation
 
-ScreenScout provides a `Makefile` and `./run.sh` script so you can manage services and scrapers using simple commands.
+ScreenScout provides a `Makefile`, Docker Compose services, and a `./run.sh` script so you can execute tasks locally or in Docker.
 
 ### Available Commands
 
-| Command | Description |
-| :--- | :--- |
-| `make help` or `./run.sh help` | Display interactive menu of available commands |
-| `make setup` | Create virtual environment, install Python dependencies & Playwright browser |
-| `make db-up` | Start PostgreSQL container in background |
-| `make db-down` | Stop PostgreSQL container |
-| `make db-logs` | View real-time PostgreSQL database container logs |
-| `make db-psql` | Open interactive PostgreSQL shell inside container |
-| `make scrape-cinemas` | Scrape and save cinema locations (Golden Village & Shaw) |
-| `make scrape-movies` | Scrape and save movies and showtime schedules (Golden Village & Shaw) |
-| `make scrape-gv` | Scrape cinemas, movies, and schedules for **Golden Village** only |
-| `make scrape-shaw` | Scrape cinemas, movies, and schedules for **Shaw Theatre** only |
-| `make clean-db` | Remove expired showtime schedules and outdated movies |
-| `make run-all` | Execute complete pipeline (start DB -> scrape cinemas -> scrape movies/schedules -> clean DB) |
+| Command | Local Execution | Docker Compose Command | Description |
+| :--- | :--- | :--- | :--- |
+| **Show Menu** | `make help` | `./run.sh help` | Display menu of available commands |
+| **Setup Env** | `make setup` | N/A | Create virtual environment & install Playwright browser |
+| **Start Database** | `make db-up` | `docker compose up -d postgres` | Start PostgreSQL container in background |
+| **Stop Database** | `make db-down` | `docker compose down` | Stop PostgreSQL container |
+| **Database Logs** | `make db-logs` | `docker compose logs -f postgres` | View real-time PostgreSQL database container logs |
+| **Interactive PSQL**| `make db-psql` | `docker compose exec postgres psql ...` | Open interactive PostgreSQL shell |
+| **Scrape Cinemas** | `make scrape-cinemas` | `docker compose run --rm scrape-cinemas` | Scrape cinema locations (GV & Shaw) |
+| **Scrape Movies** | `make scrape-movies` | `docker compose run --rm scrape-movies` | Scrape movies and schedules (GV & Shaw) |
+| **Scrape GV** | `make scrape-gv` | `docker compose run --rm scrape-gv` | Scrape cinemas, movies, and schedules for **Golden Village** |
+| **Scrape Shaw** | `make scrape-shaw` | `docker compose run --rm scrape-shaw` | Scrape cinemas, movies, and schedules for **Shaw Theatre** |
+| **Clean Database** | `make clean-db` | `docker compose run --rm clean-db` | Remove expired showtime schedules and outdated movies |
+| **Run Pipeline** | `make run-all` | `docker compose run --rm run-all` | Run full pipeline (Start DB -> Scrape -> Clean) |
 
 ### Usage Examples
 
+#### Option 1: Using Makefile / `./run.sh` (Recommended)
 ```bash
-# 1. First-time environment setup
-make setup
-
-# 2. Start PostgreSQL database
+# Start DB & run Golden Village scraper locally
 make db-up
-
-# 3. Scrape provider individually
 make scrape-gv
-make scrape-shaw
 
-# Or run everything end-to-end
-make run-all
+# Or run via Docker containers
+make docker-scrape-gv
+```
+
+#### Option 2: Using Docker Compose Directly
+```bash
+# Start PostgreSQL database
+docker compose up -d postgres
+
+# Run Golden Village scraper container
+docker compose run --rm scrape-gv
+
+# Run Shaw Theatre scraper container
+docker compose run --rm scrape-shaw
+
+# Run full end-to-end pipeline in Docker
+docker compose run --rm run-all
 ```
