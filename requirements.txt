@@ -1,8 +1,15 @@
+anyio==4.14.2
+certifi==2026.7.22
+dotenv==0.9.9
 greenlet==3.5.4
+h11==0.16.0
+httpcore==1.0.9
 httpx==0.28.1
+idna==3.18
 playwright==1.61.0
 psycopg2-binary==2.9.12
 pyee==13.0.1
-pyvirtualdisplay==3.0
+python-dotenv==1.2.2
+PyVirtualDisplay==3.0
 typing_extensions==4.16.0
 xvfbwrapper==0.2.29
