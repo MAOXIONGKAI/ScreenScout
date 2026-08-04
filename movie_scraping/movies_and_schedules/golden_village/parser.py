@@ -2,6 +2,7 @@ import html
 import importlib.util
 from datetime import date, datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import re
 from typing import List, Dict, Any, Optional
 
@@ -121,6 +122,7 @@ def parse_schedules(raw_schedules: List[Dict[str, Any]]) -> List[Schedule]:
     if not raw_schedules:
         return []
 
+    now_sg = datetime.now(ZoneInfo("Asia/Singapore")).replace(tzinfo=None)
     parsed_schedules = []
     for item in raw_schedules:
         if not isinstance(item, dict):
@@ -164,6 +166,17 @@ def parse_schedules(raw_schedules: List[Dict[str, Any]]) -> List[Schedule]:
                     time12 = t_item.get("time12") or ""
                     start_time = _format_time24(time24) if time24 else str(time12).strip()
                     hall = t_item.get("hallNumber") or ""
+
+                    # Filter out past showtimes
+                    try:
+                        norm_time = _format_time24(time24) if time24 else start_time
+                        if len(norm_time) == 5:
+                            norm_time += ":00"
+                        sched_dt = datetime.strptime(f"{start_date} {norm_time}", "%Y-%m-%d %H:%M:%S")
+                        if sched_dt < now_sg:
+                            continue
+                    except (ValueError, TypeError):
+                        pass
 
                     # Generate deterministic integer schedule ID
                     import zlib

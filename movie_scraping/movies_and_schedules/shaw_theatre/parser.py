@@ -2,6 +2,7 @@ import html
 import importlib.util
 from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import re
 from typing import List, Dict, Any, Union, Optional
 
@@ -131,6 +132,7 @@ def parse_schedules(raw_schedules: List[Union[Dict[str, Any], List[Dict[str, Any
     if not raw_schedules:
         return []
 
+    now_sg = datetime.now(ZoneInfo("Asia/Singapore")).replace(tzinfo=None)
     parsed_schedules = []
     for item in raw_schedules:
         movie_list = item if isinstance(item, list) else [item]
@@ -150,12 +152,25 @@ def parse_schedules(raw_schedules: List[Union[Dict[str, Any], List[Dict[str, Any
                 if perf_id and loc_id and m_id and disp_date and disp_time:
                     try:
                         time_24h = _format_time_24h(disp_time)
+                        start_date_str = str(disp_date).strip()
+
+                        # Filter out past showtimes
+                        try:
+                            norm_time = time_24h
+                            if len(norm_time) == 5:
+                                norm_time += ":00"
+                            sched_dt = datetime.strptime(f"{start_date_str} {norm_time}", "%Y-%m-%d %H:%M:%S")
+                            if sched_dt < now_sg:
+                                continue
+                        except (ValueError, TypeError):
+                            pass
+
                         parsed_schedules.append(
                             Schedule(
                                 id=int(perf_id),
                                 cinema_id=1000 + int(loc_id),
                                 movie_id=int(m_id),
-                                start_date=str(disp_date).strip(),
+                                start_date=start_date_str,
                                 start_time=time_24h,
                                 created_at=None,
                             )

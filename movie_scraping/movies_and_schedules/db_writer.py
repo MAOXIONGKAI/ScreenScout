@@ -3,6 +3,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import sys
 try:
     from dotenv import load_dotenv
@@ -272,10 +273,15 @@ class DatabaseWriter:
             id = EXCLUDED.id;
         """
 
+        now_sg = datetime.now(ZoneInfo("Asia/Singapore")).replace(tzinfo=None)
         unique_schedules = {}
         for s in schedules:
             try:
                 time_val = _parse_start_time(s.start_time)
+                sched_dt = datetime.strptime(f"{s.start_date} {time_val}", "%Y-%m-%d %H:%M:%S")
+                if sched_dt < now_sg:
+                    continue
+
                 key = (s.movie_id, s.cinema_id, s.start_date, time_val)
                 unique_schedules[key] = (
                     s.id,
@@ -288,14 +294,17 @@ class DatabaseWriter:
                 print(f"Skipping schedule item (id={s.id}): {e}")
 
         values = list(unique_schedules.values())
+        if not values:
+            print("No upcoming schedules to upsert (all schedules filtered out as past).")
+            return 0
 
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 execute_values(cur, upsert_query, values)
             conn.commit()
 
-        print(f"Successfully upserted {len(schedules)} schedules into PostgreSQL database.")
-        return len(schedules)
+        print(f"Successfully upserted {len(values)} schedules into PostgreSQL database.")
+        return len(values)
 
 
 def save_movies(movies: List[Movie], db_uri: Optional[str] = None) -> int:
