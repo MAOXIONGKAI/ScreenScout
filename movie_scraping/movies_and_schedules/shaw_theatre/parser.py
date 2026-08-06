@@ -118,9 +118,13 @@ def parse_movies(raw_movies: List[dict]) -> List[Movie]:
         return []
 
     parsed_movies = []
+    seen_ids = set()
     for raw in raw_movies:
         try:
-            parsed_movies.append(_parse_movie(raw))
+            m = _parse_movie(raw)
+            if m.id not in seen_ids:
+                seen_ids.add(m.id)
+                parsed_movies.append(m)
         except (KeyError, TypeError, ValueError) as e:
             title = raw.get("primaryTitle", "unknown")
             print(f"Skipping Shaw movie '{title}': {e}")
@@ -134,6 +138,7 @@ def parse_schedules(raw_schedules: List[Union[Dict[str, Any], List[Dict[str, Any
 
     now_sg = datetime.now(ZoneInfo("Asia/Singapore")).replace(tzinfo=None)
     parsed_schedules = []
+    seen_perf_ids = set()
     for item in raw_schedules:
         movie_list = item if isinstance(item, list) else [item]
         for movie_obj in movie_list:
@@ -151,6 +156,10 @@ def parse_schedules(raw_schedules: List[Union[Dict[str, Any], List[Dict[str, Any
                 disp_time = st.get("displayTime")
                 if perf_id and loc_id and m_id and disp_date and disp_time:
                     try:
+                        perf_id_int = int(perf_id)
+                        if perf_id_int in seen_perf_ids:
+                            continue
+                        
                         time_24h = _format_time_24h(disp_time)
                         start_date_str = str(disp_date).strip()
 
@@ -165,9 +174,10 @@ def parse_schedules(raw_schedules: List[Union[Dict[str, Any], List[Dict[str, Any
                         except (ValueError, TypeError):
                             pass
 
+                        seen_perf_ids.add(perf_id_int)
                         parsed_schedules.append(
                             Schedule(
-                                id=int(perf_id),
+                                id=perf_id_int,
                                 cinema_id=1000 + int(loc_id),
                                 movie_id=int(m_id),
                                 start_date=start_date_str,
