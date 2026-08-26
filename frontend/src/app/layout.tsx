@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 import ParticleBackground from "@/components/ParticleBackground";
 
@@ -20,10 +21,18 @@ export default function RootLayout({
         <ParticleBackground />
         <header className="header">
           <div className="header-inner">
-            <a href="/" className="logo">
+            <Link href="/" className="logo">
               <span className="logo-icon">🎬</span>
               <span>ScreenScout</span>
-            </a>
+            </Link>
+            <nav className="nav-links">
+              <Link href="/" className="nav-link">
+                Movies
+              </Link>
+              <Link href="/about" className="nav-link">
+                About
+              </Link>
+            </nav>
           </div>
         </header>
         <main>{children}</main>

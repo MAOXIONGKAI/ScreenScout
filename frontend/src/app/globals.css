@@ -198,6 +198,30 @@ main {
   font-size: var(--font-size-2xl);
 }
 
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.nav-link {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-base);
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-link:hover {
+  color: #ffffff;
+  background: var(--bg-glass-hover);
+  border-color: rgba(192, 132, 252, 0.3);
+}
+
 /* ============================================
    Hero Section
    ============================================ */
