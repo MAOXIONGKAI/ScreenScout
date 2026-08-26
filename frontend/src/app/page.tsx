@@ -70,7 +70,7 @@ export default function HomePage() {
         <div className="container">
           <h1 className="hero-title">Discover Movies</h1>
           <p className="hero-subtitle">
-            Real-time showtimes across Singapore&apos;s top cinemas. Golden Village &amp; Shaw Theatres, all in one place.
+            Real-time showtimes across Singapore&apos;s top cinemas, all in one place.
           </p>
 
           {/* Search Bar */}
