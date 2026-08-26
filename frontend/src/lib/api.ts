@@ -1,4 +1,12 @@
-import { MoviesResponse, MovieDetail, Cinema } from "./types";
+import {
+  MoviesResponse,
+  MovieDetail,
+  Cinema,
+  AuthResponse,
+  LoginPayload,
+  RegisterPayload,
+  User,
+} from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -51,4 +59,50 @@ export async function fetchProviders(): Promise<string[]> {
   const res = await fetch(`${API_BASE}/api/providers`);
   if (!res.ok) throw new Error("Failed to fetch providers");
   return res.json();
+}
+
+export async function registerUser(
+  payload: RegisterPayload
+): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Registration failed");
+  }
+  return data;
+}
+
+export async function loginUser(
+  payload: LoginPayload
+): Promise<AuthResponse> {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Login failed");
+  }
+  return data;
+}
+
+export async function fetchCurrentUser(token: string): Promise<User> {
+  const res = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Session expired");
+  }
+  return data;
 }

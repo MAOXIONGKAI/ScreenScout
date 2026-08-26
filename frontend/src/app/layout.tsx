@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
 import ParticleBackground from "@/components/ParticleBackground";
+import Navbar from "@/components/Navbar";
+import AuthModal from "@/components/AuthModal";
+import { AuthProvider } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "ScreenScout — Singapore Movie Showtimes",
@@ -18,24 +20,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ParticleBackground />
-        <header className="header">
-          <div className="header-inner">
-            <Link href="/" className="logo">
-              <span className="logo-icon">🎬</span>
-              <span>ScreenScout</span>
-            </Link>
-            <nav className="nav-links">
-              <Link href="/" className="nav-link">
-                Movies
-              </Link>
-              <Link href="/about" className="nav-link">
-                About
-              </Link>
-            </nav>
-          </div>
-        </header>
-        <main>{children}</main>
+        <AuthProvider>
+          <ParticleBackground />
+          <Navbar />
+          <AuthModal />
+          <main>{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

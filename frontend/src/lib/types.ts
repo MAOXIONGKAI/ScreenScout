@@ -58,3 +58,28 @@ export interface MoviesResponse {
   page: number;
   limit: number;
 }
+
+// User represents the authenticated user profile.
+export interface User {
+  id: number;
+  username: string;
+  created_at: string;
+}
+
+// AuthResponse is returned on successful login / registration.
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+// LoginPayload for POST /api/auth/login
+export interface LoginPayload {
+  username: string;
+  password: string;
+}
+
+// RegisterPayload for POST /api/auth/register
+export interface RegisterPayload {
+  username: string;
+  password: string;
+}
