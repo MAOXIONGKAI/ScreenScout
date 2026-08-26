@@ -76,34 +76,60 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 
 // SendNotification dispatches a message to the user's Telegram handle or chat ID.
 func (s *TelegramService) SendNotification(recipient, message string) (string, error) {
+	// 1. Try Notification Service first if configured or available
+	notifyURL := os.Getenv("NOTIFICATION_SERVICE_URL")
+	if notifyURL == "" {
+		notifyURL = "http://localhost:8085/api/notify"
+	}
+
+	payload := map[string]string{
+		"recipient":    recipient,
+		"message":      message,
+		"channel_type": "TELEGRAM",
+	}
+	jsonData, _ := json.Marshal(payload)
+	resp, err := s.Client.Post(notifyURL, "application/json", bytes.NewBuffer(jsonData))
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var res map[string]interface{}
+			if err := json.NewDecoder(resp.Body).Decode(&res); err == nil {
+				if status, ok := res["status"].(string); ok {
+					return status, nil
+				}
+				return "SENT", nil
+			}
+		}
+	}
+
+	// 2. Fallback to direct Telegram Bot API / local simulation
 	if s.BotToken == "" {
-		// Simulation mode when bot token is not configured
 		fmt.Printf("\n[Telegram Simulation] Sending notification to %s:\n%s\n\n", recipient, message)
 		return "SIMULATED", nil
 	}
 
 	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", s.BotToken)
-	payload := map[string]string{
+	directPayload := map[string]string{
 		"chat_id":    recipient,
 		"text":       message,
 		"parse_mode": "Markdown",
 	}
 
-	jsonData, err := json.Marshal(payload)
+	directData, err := json.Marshal(directPayload)
 	if err != nil {
 		return "FAILED", err
 	}
 
-	resp, err := s.Client.Post(apiURL, "application/json", bytes.NewBuffer(jsonData))
+	dResp, err := s.Client.Post(apiURL, "application/json", bytes.NewBuffer(directData))
 	if err != nil {
 		fmt.Printf("[Telegram Error] Failed to send message: %v\n", err)
 		return "FAILED", err
 	}
-	defer resp.Body.Close()
+	defer dResp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		fmt.Printf("[Telegram Warning] Telegram API returned status %d\n", resp.StatusCode)
-		return "FAILED", fmt.Errorf("telegram API status %d", resp.StatusCode)
+	if dResp.StatusCode >= 400 {
+		fmt.Printf("[Telegram Warning] Telegram API returned status %d\n", dResp.StatusCode)
+		return "FAILED", fmt.Errorf("telegram API status %d", dResp.StatusCode)
 	}
 
 	return "SENT", nil

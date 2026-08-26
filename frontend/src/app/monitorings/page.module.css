@@ -173,6 +173,35 @@
   background: #fbbf24;
 }
 
+.botTipBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--space-md);
+  padding: 10px 14px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px dashed rgba(192, 132, 252, 0.3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.botLink {
+  color: #c084fc;
+  font-weight: 700;
+  text-decoration: underline;
+  transition: color var(--transition-fast);
+}
+
+.botLink:hover {
+  color: #ffffff;
+}
+
+.botHintText {
+  color: var(--text-muted);
+}
+
 /* Subscription Form */
 .subscriptionForm {
   display: flex;
@@ -281,15 +310,14 @@
 
 .subCard {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   padding: var(--space-md) var(--space-lg);
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
   transition: all var(--transition-base);
-  flex-wrap: wrap;
-  gap: var(--space-md);
+  gap: var(--space-xs);
 }
 
 .subCard:hover {
@@ -299,6 +327,58 @@
 
 .subCardTriggered {
   border-left: 3px solid #34d399;
+}
+
+.subCardCollapsed {
+  padding: var(--space-md) var(--space-lg);
+}
+
+.subCardTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.subCardHeaderClickable {
+  cursor: pointer;
+  flex: 1;
+  min-width: 240px;
+  user-select: none;
+  border-radius: var(--radius-md);
+}
+
+.subCardHeaderClickable .subQueryTitle {
+  margin-bottom: 0;
+}
+
+.subCardBody {
+  width: 100%;
+  animation: fadeIn 0.2s ease-out;
+  margin-top: var(--space-sm);
+}
+
+.collapseToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-card);
+  border-radius: 50%;
+  cursor: pointer;
+  color: #c084fc;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.collapseToggleBtn:hover {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(192, 132, 252, 0.5);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
 }
 
 .subCardMain {
@@ -391,39 +471,44 @@
 }
 
 .matchedMovieCard {
+  display: block;
+  text-decoration: none;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
-  padding: 10px 14px;
+  padding: 12px 16px;
   transition: all var(--transition-base);
+  cursor: pointer;
 }
 
 .matchedMovieCard:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(192, 132, 252, 0.35);
+  background: rgba(168, 85, 247, 0.08);
+  border-color: rgba(192, 132, 252, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .matchedMovieTop {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .movieIcon {
   font-size: 1rem;
 }
 
-.matchedTitleLink {
+.matchedTitle {
   font-size: var(--font-size-sm);
   font-weight: 700;
   color: #ffffff;
   transition: color var(--transition-fast);
+  margin: 0;
 }
 
-.matchedTitleLink:hover {
+.matchedMovieCard:hover .matchedTitle {
   color: #c084fc;
-  text-decoration: underline;
 }
 
 .matchedMovieTags {
@@ -473,24 +558,6 @@
 .releaseDateTag {
   color: var(--text-muted);
   font-size: 11px;
-}
-
-.viewShowtimesLink {
-  margin-left: auto;
-  color: #d8b4fe;
-  font-weight: 600;
-  font-size: 11px;
-  padding: 2px 8px;
-  background: rgba(168, 85, 247, 0.12);
-  border: 1px solid rgba(192, 132, 252, 0.3);
-  border-radius: var(--radius-full);
-  transition: all var(--transition-fast);
-}
-
-.viewShowtimesLink:hover {
-  background: rgba(168, 85, 247, 0.3);
-  color: #ffffff;
-  border-color: rgba(192, 132, 252, 0.6);
 }
 
 .subMetaText {

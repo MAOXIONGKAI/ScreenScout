@@ -76,14 +76,19 @@ docker-clean-db: ## [Docker] Clean database inside Docker container
 docker-run-all: ## [Docker] Run full pipeline inside Docker container
 	docker compose run --rm run-all
 
+notification-service: ## Start Python Notification Service on :8085
+	$(PYTHON) notification_service/main.py
+
 backend: ## Start Hertz Go backend API server on :8080
 	cd backend && go run main.go
 
 frontend: ## Start Next.js frontend dev server on :3000
 	cd frontend && npm run dev
 
-dev: db-up ## Start database, backend, and frontend (all local)
-	@echo "Starting backend and frontend..."
+dev: db-up ## Start database, notification-service, backend, and frontend (all local)
+	@echo "Starting notification service, backend and frontend..."
+	@$(PYTHON) notification_service/main.py &
 	@cd backend && go run main.go &
 	@cd frontend && npm run dev
+
 

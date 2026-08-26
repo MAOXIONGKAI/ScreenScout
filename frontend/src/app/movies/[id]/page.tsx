@@ -72,6 +72,16 @@ export default function MovieDetailPage() {
   const [timeFrom, setTimeFrom] = useState("");
   const [timeTo, setTimeTo] = useState("");
 
+  // Collapsible Cinemas State
+  const [collapsedCinemas, setCollapsedCinemas] = useState<Record<number, boolean>>({});
+
+  const toggleCinemaCollapse = (cinemaId: number) => {
+    setCollapsedCinemas((prev) => ({
+      ...prev,
+      [cinemaId]: !prev[cinemaId],
+    }));
+  };
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -414,29 +424,69 @@ export default function MovieDetailPage() {
           )}
 
           {filteredSchedules.length > 0 ? (
-            filteredSchedules.map((cs) => (
-              <div key={cs.cinema_id} className={styles.cinemaSchedule}>
-                <div className={styles.cinemaHeader}>
-                  <span className={styles.cinemaName}>{cs.cinema_name}</span>
-                  <span className={styles.cinemaBranch}>{cs.branch}</span>
-                </div>
-
-                {cs.dates.map((ds) => (
-                  <div key={ds.date} className={styles.dateGroup}>
-                    <p className={styles.dateLabel}>
-                      {formatScheduleDate(ds.date)}
-                    </p>
-                    <div className={styles.showtimes}>
-                      {ds.showtimes.map((st) => (
-                        <span key={st.id} className={styles.showtimePill}>
-                          {formatTime(st.start_time)}
-                        </span>
-                      ))}
+            filteredSchedules.map((cs) => {
+              const isCollapsed = Boolean(collapsedCinemas[cs.cinema_id]);
+              return (
+                <div
+                  key={cs.cinema_id}
+                  className={`${styles.cinemaSchedule} ${
+                    isCollapsed ? styles.cinemaScheduleCollapsed : ""
+                  }`}
+                >
+                  <div
+                    className={styles.cinemaHeader}
+                    onClick={() => toggleCinemaCollapse(cs.cinema_id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleCinemaCollapse(cs.cinema_id);
+                      }
+                    }}
+                    title={
+                      isCollapsed
+                        ? "Click to expand showtimes"
+                        : "Click to collapse card"
+                    }
+                    aria-expanded={!isCollapsed}
+                  >
+                    <div className={styles.cinemaHeaderLeft}>
+                      <span className={styles.cinemaName}>{cs.cinema_name}</span>
+                      <span className={styles.cinemaBranch}>{cs.branch}</span>
+                    </div>
+                    <div className={styles.collapseToggle}>
+                      <span
+                        className={`${styles.chevron} ${
+                          isCollapsed ? styles.chevronCollapsed : ""
+                        }`}
+                      >
+                        ▲
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
-            ))
+
+                  {!isCollapsed && (
+                    <div className={styles.cinemaBody}>
+                      {cs.dates.map((ds) => (
+                        <div key={ds.date} className={styles.dateGroup}>
+                          <p className={styles.dateLabel}>
+                            {formatScheduleDate(ds.date)}
+                          </p>
+                          <div className={styles.showtimes}>
+                            {ds.showtimes.map((st) => (
+                              <span key={st.id} className={styles.showtimePill}>
+                                {formatTime(st.start_time)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           ) : (
             <div className={styles.noSchedules}>
               <div className={styles.noSchedulesIcon}>

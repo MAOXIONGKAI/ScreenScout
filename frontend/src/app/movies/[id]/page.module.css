@@ -285,23 +285,53 @@
   padding: var(--space-lg);
   margin-bottom: var(--space-md);
   backdrop-filter: blur(12px);
-  transition: border-color var(--transition-base);
+  transition: all var(--transition-base);
 }
 
 .cinemaSchedule:hover {
   border-color: var(--border-hover);
 }
 
+.cinemaScheduleCollapsed {
+  padding: 12px 20px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cinemaScheduleCollapsed:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(192, 132, 252, 0.4);
+}
+
 .cinemaHeader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-md);
+  margin-bottom: 0;
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-md);
+  transition: opacity var(--transition-fast);
+}
+
+.cinemaHeader:hover {
+  opacity: 0.9;
+}
+
+.cinemaSchedule:not(.cinemaScheduleCollapsed) .cinemaHeader {
   margin-bottom: var(--space-md);
+}
+
+.cinemaHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
   flex-wrap: wrap;
 }
 
 .cinemaName {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -309,7 +339,7 @@
 .cinemaBranch {
   display: inline-flex;
   align-items: center;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: 600;
   color: #d8b4fe;
   background: rgba(168, 85, 247, 0.15);
@@ -317,6 +347,52 @@
   border-radius: var(--radius-full);
   padding: 3px 12px;
   letter-spacing: 0.01em;
+}
+
+.collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-card);
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.cinemaHeader:hover .collapseToggle {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(192, 132, 252, 0.5);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+}
+
+.chevron {
+  display: inline-block;
+  font-size: 10px;
+  color: #c084fc;
+  transition: transform 0.25s ease;
+}
+
+.chevronCollapsed {
+  transform: rotate(180deg);
+  color: var(--text-muted);
+}
+
+.cinemaBody {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dateGroup {

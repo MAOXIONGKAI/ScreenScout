@@ -32,6 +32,16 @@ export default function MonitoringsPage() {
   const [subError, setSubError] = useState("");
   const [activeTab, setActiveTab] = useState<"active" | "triggered">("active");
 
+  // Collapsible Triggered Subscriptions State
+  const [collapsedTriggeredSubs, setCollapsedTriggeredSubs] = useState<Record<number, boolean>>({});
+
+  const toggleTriggeredSubCollapse = (subId: number) => {
+    setCollapsedTriggeredSubs((prev) => ({
+      ...prev,
+      [subId]: !prev[subId],
+    }));
+  };
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "N/A";
     try {
@@ -288,6 +298,21 @@ export default function MonitoringsPage() {
               <span>No Telegram handle registered yet. Enter your handle above to enable alerts.</span>
             </div>
           )}
+
+          <div className={styles.botTipBox}>
+            <span>🤖 Official Bot:</span>
+            <a
+              href="https://t.me/screenscoutBot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.botLink}
+            >
+              @screenscoutBot ↗
+            </a>
+            <span className={styles.botHintText}>
+              (Send <strong>/start</strong> to the bot so it has permission to message you)
+            </span>
+          </div>
         </section>
 
         {/* Section 2: Movie Monitoring Subscriptions */}
@@ -393,6 +418,7 @@ export default function MonitoringsPage() {
             <div className={styles.subList}>
               {triggeredSubs.length > 0 ? (
                 triggeredSubs.map((sub) => {
+                  const isCollapsed = Boolean(collapsedTriggeredSubs[sub.id]);
                   const matches: MatchedMovieItem[] =
                     sub.matched_movies && sub.matched_movies.length > 0
                       ? sub.matched_movies
@@ -409,92 +435,138 @@ export default function MonitoringsPage() {
                       : [];
 
                   return (
-                    <div key={sub.id} className={`${styles.subCard} ${styles.subCardTriggered}`}>
-                      <div className={styles.subCardMain}>
-                        <div className={styles.subHeaderRow}>
-                          <div className={styles.subStatusBadgeTriggered}>
-                            <span>✓ Alert Triggered</span>
+                    <div
+                      key={sub.id}
+                      className={`${styles.subCard} ${styles.subCardTriggered} ${
+                        isCollapsed ? styles.subCardCollapsed : ""
+                      }`}
+                    >
+                      <div className={styles.subCardTopRow}>
+                        <div
+                          className={styles.subCardHeaderClickable}
+                          onClick={() => toggleTriggeredSubCollapse(sub.id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              toggleTriggeredSubCollapse(sub.id);
+                            }
+                          }}
+                          title={
+                            isCollapsed
+                              ? "Click to expand matched movie details"
+                              : "Click to collapse card"
+                          }
+                          aria-expanded={!isCollapsed}
+                        >
+                          <div className={styles.subHeaderRow}>
+                            <div className={styles.subStatusBadgeTriggered}>
+                              <span>✓ Alert Triggered</span>
+                            </div>
+                            <span className={styles.matchCountBadge}>
+                              {matches.length}{" "}
+                              {matches.length === 1 ? "Movie" : "Movies"} Matched
+                            </span>
                           </div>
-                          <span className={styles.matchCountBadge}>
-                            {matches.length} {matches.length === 1 ? "Movie" : "Movies"} Matched
-                          </span>
+
+                          <h3 className={styles.subQueryTitle}>
+                            Tracked Keyword: &ldquo;{sub.movie_query}&rdquo;
+                          </h3>
                         </div>
 
-                        <h3 className={styles.subQueryTitle}>
-                          Tracked Keyword: &ldquo;{sub.movie_query}&rdquo;
-                        </h3>
+                        <div className={styles.subCardActions}>
+                          <button
+                            className={styles.remonitorBtn}
+                            onClick={() => handleToggleSubscription(sub.id)}
+                            title="Re-activate monitoring"
+                          >
+                            Re-monitor
+                          </button>
+                          <button
+                            className={styles.deleteSubBtn}
+                            onClick={() => handleDeleteSubscription(sub.id)}
+                            title="Delete record"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            className={styles.collapseToggleBtn}
+                            onClick={() => toggleTriggeredSubCollapse(sub.id)}
+                            title={isCollapsed ? "Expand details" : "Collapse card"}
+                            aria-label="Toggle details"
+                          >
+                            <span
+                              className={`${styles.chevron} ${
+                                isCollapsed ? styles.chevronCollapsed : ""
+                              }`}
+                            >
+                              ▲
+                            </span>
+                          </button>
+                        </div>
+                      </div>
 
-                        {/* Matched Movies Grid */}
-                        {matches.length > 0 && (
-                          <div className={styles.matchedMoviesGrid}>
-                            {matches.map((m) => {
-                              const isGV = m.provider === "GV" || m.provider === "Golden Village";
-                              const isShowing = m.status === "now_showing" || m.status === "LIVE";
-                              return (
-                                <div key={m.id} className={styles.matchedMovieCard}>
-                                  <div className={styles.matchedMovieTop}>
-                                    <span className={styles.movieIcon}>🎥</span>
-                                    <Link
-                                      href={`/movies/${m.id}`}
-                                      className={styles.matchedTitleLink}
-                                    >
-                                      {m.title}
-                                    </Link>
-                                  </div>
-                                  <div className={styles.matchedMovieTags}>
-                                    <span
-                                      className={`${styles.cinemaTag} ${
-                                        isGV ? styles.gvTag : styles.shawTag
-                                      }`}
-                                    >
-                                      {isGV ? "Golden Village" : "Shaw Theatres"}
-                                    </span>
-                                    <span
-                                      className={`${styles.statusTag} ${
-                                        isShowing ? styles.showingTag : styles.comingTag
-                                      }`}
-                                    >
-                                      {isShowing ? "Now Showing" : "Coming Soon"}
-                                    </span>
-                                    {m.release_date && (
-                                      <span className={styles.releaseDateTag}>
-                                        📅 {m.release_date}
+                      {/* Expanded Content: Matched Movies Grid & Notified Timestamp */}
+                      {!isCollapsed && (
+                        <div className={styles.subCardBody}>
+                          {matches.length > 0 && (
+                            <div className={styles.matchedMoviesGrid}>
+                              {matches.map((m) => {
+                                const isGV =
+                                  m.provider === "GV" ||
+                                  m.provider === "Golden Village";
+                                const isShowing =
+                                  m.status === "now_showing" ||
+                                  m.status === "LIVE";
+                                return (
+                                  <Link
+                                    key={m.id}
+                                    href={`/movies/${m.id}`}
+                                    className={styles.matchedMovieCard}
+                                    title={`View showtimes and details for ${m.title}`}
+                                  >
+                                    <div className={styles.matchedMovieTop}>
+                                      <span className={styles.movieIcon}>🎥</span>
+                                      <h4 className={styles.matchedTitle}>
+                                        {m.title}
+                                      </h4>
+                                    </div>
+                                    <div className={styles.matchedMovieTags}>
+                                      <span
+                                        className={`${styles.cinemaTag} ${
+                                          isGV ? styles.gvTag : styles.shawTag
+                                        }`}
+                                      >
+                                        {isGV ? "Golden Village" : "Shaw Theatres"}
                                       </span>
-                                    )}
-                                    <Link
-                                      href={`/movies/${m.id}`}
-                                      className={styles.viewShowtimesLink}
-                                    >
-                                      Showtimes →
-                                    </Link>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                                      <span
+                                        className={`${styles.statusTag} ${
+                                          isShowing
+                                            ? styles.showingTag
+                                            : styles.comingTag
+                                        }`}
+                                      >
+                                        {isShowing ? "Now Showing" : "Coming Soon"}
+                                      </span>
+                                      {m.release_date && (
+                                        <span className={styles.releaseDateTag}>
+                                          📅 {m.release_date}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
 
-                        <p className={styles.subMetaText}>
-                          Notified on: {formatDate(sub.triggered_at || sub.updated_at)}
-                        </p>
-                      </div>
-
-                      <div className={styles.subCardActions}>
-                        <button
-                          className={styles.remonitorBtn}
-                          onClick={() => handleToggleSubscription(sub.id)}
-                          title="Re-activate monitoring"
-                        >
-                          Re-monitor
-                        </button>
-                        <button
-                          className={styles.deleteSubBtn}
-                          onClick={() => handleDeleteSubscription(sub.id)}
-                          title="Delete record"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                          <p className={styles.subMetaText}>
+                            Notified on:{" "}
+                            {formatDate(sub.triggered_at || sub.updated_at)}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   );
                 })

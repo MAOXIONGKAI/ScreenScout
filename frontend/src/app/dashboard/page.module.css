@@ -255,6 +255,35 @@
   background: #fbbf24;
 }
 
+.botTipBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--space-md);
+  padding: 10px 14px;
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px dashed rgba(192, 132, 252, 0.3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.botLink {
+  color: #c084fc;
+  font-weight: 700;
+  text-decoration: underline;
+  transition: color var(--transition-fast);
+}
+
+.botLink:hover {
+  color: #ffffff;
+}
+
+.botHintText {
+  color: var(--text-muted);
+}
+
 /* Monitoring CTA Box */
 .monitoringCtaBox {
   display: flex;

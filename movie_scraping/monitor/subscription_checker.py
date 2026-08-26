@@ -18,10 +18,17 @@ ROOT_DIR = MONITOR_DIR.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT_DIR / ".env")
+except ImportError:
+    pass
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/screenscout")
+NOTIFICATION_SERVICE_URL = os.getenv("NOTIFICATION_SERVICE_URL", "http://localhost:8085/api/notify")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 
@@ -30,25 +37,57 @@ def get_db_connection():
 
 
 def send_telegram_alert(recipient: str, message: str) -> str:
-    """Send notification to Telegram bot API or simulate locally."""
-    if not TELEGRAM_BOT_TOKEN:
-        print(f"\n[Telegram Simulation] Alert dispatched to {recipient}:\n{message}\n")
-        return "SIMULATED"
-
-    api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = json.dumps({
-        "chat_id": recipient,
-        "text": message,
+    """
+    Invokes the ScreenScout Notification Service to dispatch the real Telegram alert.
+    Falls back to direct Telegram client if notification service daemon is starting.
+    """
+    payload_data = {
+        "recipient": recipient,
+        "channel_type": "TELEGRAM",
+        "message": message,
         "parse_mode": "Markdown",
-    }).encode("utf-8")
+    }
+    json_bytes = json.dumps(payload_data).encode("utf-8")
 
-    req = urllib.request.Request(api_url, data=payload, headers={"Content-Type": "application/json"})
+    # 1. Primary: Delegate to Notification Service
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
-            if response.status == 200:
-                return "SENT"
-            return "FAILED"
+        req = urllib.request.Request(
+            NOTIFICATION_SERVICE_URL,
+            data=json_bytes,
+            headers={"Content-Type": "application/json", "User-Agent": "ScreenScoutMonitor/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp_body = json.loads(resp.read().decode("utf-8"))
+            status = resp_body.get("status", "SENT")
+            if resp_body.get("success"):
+                print(f"[Notification Service] Delivered alert to {recipient} (Status: {status})")
+                return status
+            else:
+                print(f"[Notification Service Error] Could not deliver to {recipient}: {resp_body.get('error')}")
+                if resp_body.get("hint"):
+                    print(f"💡 Hint: {resp_body.get('hint')}")
+                return "FAILED"
+    except urllib.error.URLError:
+        # 2. Fallback: Notification Service offline -> Direct client
+        pass
     except Exception as e:
+        print(f"[Notification Service Invocation Warning] {e}")
+
+    # Fallback to local TelegramClient
+    try:
+        from notification_service.telegram_client import TelegramClient
+        client = TelegramClient()
+        res = client.send_message(recipient, message)
+        if res.get("success"):
+            return res.get("status", "SENT")
+        print(f"[Direct Telegram Alert Error] {res.get('error')}")
+        if res.get("hint"):
+            print(f"💡 Hint: {res.get('hint')}")
+        return "FAILED"
+    except Exception as e:
+        if not TELEGRAM_BOT_TOKEN:
+            print(f"\n[Telegram Simulation] Alert dispatched to {recipient}:\n{message}\n")
+            return "SIMULATED"
         print(f"[Telegram Alert Error] Could not deliver to {recipient}: {e}")
         return "FAILED"
 

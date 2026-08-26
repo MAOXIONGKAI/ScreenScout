@@ -226,6 +226,21 @@ export default function DashboardPage() {
               <span>No Telegram handle registered yet. Enter your handle above to enable alerts.</span>
             </div>
           )}
+
+          <div className={styles.botTipBox}>
+            <span>🤖 Official Bot:</span>
+            <a
+              href="https://t.me/screenscoutBot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.botLink}
+            >
+              @screenscoutBot ↗
+            </a>
+            <span className={styles.botHintText}>
+              (Send <strong>/start</strong> to the bot so it has permission to message you)
+            </span>
+          </div>
         </section>
 
         {/* Section 2: Quick Link to Movie Monitorings */}
