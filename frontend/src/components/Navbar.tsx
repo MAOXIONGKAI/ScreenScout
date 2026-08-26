@@ -28,10 +28,14 @@ export default function Navbar() {
             <div className={styles.authGroup}>
               {user ? (
                 <>
-                  <span className={styles.userBadge}>
+                  <Link
+                    href="/dashboard"
+                    className={styles.userBadge}
+                    title="Open User Dashboard"
+                  >
                     <span>👤</span>
                     <span>{user.username}</span>
-                  </span>
+                  </Link>
                   <button
                     className={styles.logoutBtn}
                     onClick={logout}

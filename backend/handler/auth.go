@@ -14,7 +14,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]{3,55}$`)
+var (
+	usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]{3,55}$`)
+	sgtLocation   = time.FixedZone("SGT", 8*3600)
+)
 
 // AuthHandler handles authentication HTTP requests.
 type AuthHandler struct {
@@ -89,7 +92,7 @@ func (h *AuthHandler) Register(ctx context.Context, c *app.RequestContext) {
 		User: model.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
-			CreatedAt: user.CreatedAt,
+			CreatedAt: user.CreatedAt.In(sgtLocation),
 		},
 	})
 }
@@ -148,7 +151,7 @@ func (h *AuthHandler) Login(ctx context.Context, c *app.RequestContext) {
 		User: model.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
-			CreatedAt: user.CreatedAt,
+			CreatedAt: user.CreatedAt.In(sgtLocation),
 		},
 	})
 }
@@ -182,6 +185,6 @@ func (h *AuthHandler) Me(ctx context.Context, c *app.RequestContext) {
 	c.JSON(http.StatusOK, model.UserResponse{
 		ID:        user.ID,
 		Username:  user.Username,
-		CreatedAt: user.CreatedAt,
+		CreatedAt: user.CreatedAt.In(sgtLocation),
 	})
 }

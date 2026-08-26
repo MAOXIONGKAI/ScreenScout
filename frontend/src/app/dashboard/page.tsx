@@ -1,0 +1,108 @@
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
+import styles from "./page.module.css";
+
+export default function DashboardPage() {
+  const { user, isLoading, logout, openAuthModal } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "N/A";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("en-SG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container">
+        <div className={styles.dashboardWrapper}>
+          <div style={{ textAlign: "center", padding: "60px 0" }}>
+            <div className="skeleton" style={{ width: 120, height: 120, borderRadius: "50%", margin: "0 auto 20px" }} />
+            <div className="skeleton" style={{ width: 240, height: 28, margin: "0 auto 12px" }} />
+            <div className="skeleton" style={{ width: 180, height: 16, margin: "0 auto" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container">
+        <div className={styles.dashboardWrapper}>
+          <div className={styles.unauthWrapper}>
+            <div className={styles.unauthIcon}>🔒</div>
+            <h1 className={styles.unauthTitle}>Sign In Required</h1>
+            <p className={styles.unauthText}>
+              Please sign in to view your user dashboard, account details, and preferences.
+            </p>
+            <div className={styles.unauthActions}>
+              <button
+                className={styles.browseBtn}
+                onClick={() => openAuthModal("login")}
+              >
+                Sign In to Account
+              </button>
+              <Link href="/" className={styles.logoutBtn} style={{ color: "var(--text-secondary)", borderColor: "var(--border-card)" }}>
+                ← Back to Movies
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const initials = user.username ? user.username.slice(0, 2).toUpperCase() : "U";
+
+  return (
+    <div className="container">
+      <div className={styles.dashboardWrapper}>
+        {/* Header */}
+        <div className={styles.header}>
+          <div className={styles.badge}>
+            <span>✨ Member Account</span>
+          </div>
+          <h1 className={styles.title}>User Dashboard</h1>
+          <p className={styles.subtitle}>
+            Manage your ScreenScout profile and movie browsing preferences.
+          </p>
+        </div>
+
+        {/* Profile Card */}
+        <div className={styles.profileCard}>
+          <div className={styles.avatarCircle}>{initials}</div>
+          <div className={styles.profileInfo}>
+            <h2 className={styles.profileUsername}>{user.username}</h2>
+            <div className={styles.profileMeta}>
+              <span>User ID: #{user.id}</span>
+              <span>Joined: {formatDate(user.created_at)}</span>
+            </div>
+          </div>
+          <button className={styles.logoutBtn} onClick={handleLogout}>
+            Log Out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

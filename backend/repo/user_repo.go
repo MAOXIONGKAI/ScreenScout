@@ -34,12 +34,21 @@ func (r *UserRepo) EnsureUserTable(ctx context.Context) error {
 		id                  BIGINT PRIMARY KEY,
 		username            VARCHAR(55) NOT NULL UNIQUE,
 		hashed_password     TEXT NOT NULL,
-		created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		created_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore'),
+		updated_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')
 	);
 
 	CREATE SEQUENCE IF NOT EXISTS users_id_seq START WITH 1 INCREMENT BY 1;
 	ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq');
+
+	-- Migrate columns to TIMESTAMPTZ if previously created as plain TIMESTAMP
+	DO $$ 
+	BEGIN
+		ALTER TABLE users ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'Asia/Singapore';
+		ALTER TABLE users ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'Asia/Singapore';
+	EXCEPTION
+		WHEN OTHERS THEN NULL;
+	END $$;
 
 	CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 	`

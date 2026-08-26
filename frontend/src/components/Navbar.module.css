@@ -116,6 +116,16 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: #d8b4fe;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.userBadge:hover {
+  background: rgba(168, 85, 247, 0.3);
+  border-color: rgba(192, 132, 252, 0.6);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
+  transform: translateY(-1px);
 }
 
 .logoutBtn {
