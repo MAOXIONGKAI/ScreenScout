@@ -1,14 +1,25 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import styles from "./Navbar.module.css";
 
 export default function Navbar() {
   const { user, isLoading, openAuthModal, logout } = useAuth();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} ${isScrolled ? styles.headerScrolled : ""}`}>
       <div className={styles.headerInner}>
         <Link href="/" className={styles.logo}>
           <span className={styles.logoIcon}>🎬</span>

@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   description:
     "Real-time movie availability across all major Singapore cinemas. Browse showtimes for Golden Village and Shaw Theatres in one place.",
   keywords: ["movies", "singapore", "cinema", "showtimes", "golden village", "shaw theatres"],
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

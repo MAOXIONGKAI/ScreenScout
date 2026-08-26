@@ -155,22 +155,12 @@ img {
 main {
   position: relative;
   z-index: 1;
+  padding-top: 74px;
 }
 
 /* ============================================
-   Header / Navigation
+   Header / Navigation (Scoped in Navbar.module.css)
    ============================================ */
-
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  background: rgba(10, 11, 15, 0.75);
-  border-bottom: 1px solid var(--border-subtle);
-  padding: var(--space-md) 0;
-}
 
 .header-inner {
   display: flex;
