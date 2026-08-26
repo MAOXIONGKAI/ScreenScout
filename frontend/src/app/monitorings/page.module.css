@@ -1,4 +1,4 @@
-.dashboardWrapper {
+.wrapper {
   width: 100%;
   max-width: var(--max-width);
   margin: 0 auto;
@@ -37,90 +37,8 @@
 .subtitle {
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
-}
-
-/* Profile Card */
-.profileCard {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xl);
-  padding: var(--space-xl) var(--space-2xl);
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-xl);
-  backdrop-filter: blur(16px);
-  margin-bottom: var(--space-xl);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  position: relative;
-  overflow: hidden;
-}
-
-.profileCard::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent-primary), #a855f7, #06b6d4);
-}
-
-.avatarCircle {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-primary), #a855f7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #ffffff;
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.35);
-  flex-shrink: 0;
-}
-
-.profileInfo {
-  flex: 1;
-}
-
-.profileUsername {
-  font-size: var(--font-size-2xl);
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-  margin-bottom: var(--space-xs);
-}
-
-.profileMeta {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  display: flex;
-  gap: var(--space-lg);
-  flex-wrap: wrap;
-}
-
-.logoutBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: 8px 18px;
-  font-family: var(--font-family);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: all var(--transition-base);
-  flex-shrink: 0;
-}
-
-.logoutBtn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #ffffff;
+  max-width: 680px;
+  line-height: 1.5;
 }
 
 /* Section Cards */
@@ -255,49 +173,56 @@
   background: #fbbf24;
 }
 
-/* Monitoring CTA Box */
-.monitoringCtaBox {
+/* Subscription Form */
+.subscriptionForm {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  padding: var(--space-lg) var(--space-xl);
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-lg);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
   flex-wrap: wrap;
 }
 
-.monitoringCtaText {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
+.subInputWrapper {
   flex: 1;
-  min-width: 240px;
+  min-width: 260px;
 }
 
-.goToMonitoringsBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: 10px 20px;
+.subInput {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.subInput:focus {
+  border-color: var(--accent-primary);
+  background: var(--bg-glass-hover);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.subscribeBtn {
+  padding: 12px 26px;
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
   font-weight: 700;
   color: #ffffff;
   background: linear-gradient(135deg, var(--accent-primary), #a855f7);
   border: none;
-  border-radius: var(--radius-full);
-  text-decoration: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
   transition: all var(--transition-base);
   box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
   white-space: nowrap;
 }
 
-.goToMonitoringsBtn:hover {
-  transform: translateY(-2px);
+.subscribeBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
   box-shadow: 0 0 24px rgba(168, 85, 247, 0.5);
-  color: #ffffff;
 }
 
 /* Subscriptions Tabs */
@@ -356,7 +281,7 @@
 
 .subCard {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: var(--space-md) var(--space-lg);
   background: rgba(255, 255, 255, 0.02);
@@ -378,6 +303,15 @@
 
 .subCardMain {
   flex: 1;
+  min-width: 260px;
+}
+
+.subHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  flex-wrap: wrap;
 }
 
 .subStatusBadgeActive {
@@ -391,7 +325,6 @@
   border: 1px solid rgba(6, 182, 212, 0.3);
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  margin-bottom: var(--space-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -427,17 +360,8 @@
   border: 1px solid rgba(16, 185, 129, 0.3);
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  margin-bottom: var(--space-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.subHeaderRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-xs);
-  flex-wrap: wrap;
 }
 
 .matchCountBadge {
@@ -569,17 +493,6 @@
   border-color: rgba(192, 132, 252, 0.6);
 }
 
-.matchedMovieLink {
-  font-size: var(--font-size-xs);
-  color: #d8b4fe;
-  margin-bottom: 2px;
-}
-
-.matchedMovieLink a {
-  color: #c084fc;
-  text-decoration: underline;
-}
-
 .subMetaText {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
@@ -589,6 +502,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
+  flex-shrink: 0;
 }
 
 .remonitorBtn {
@@ -682,7 +596,7 @@
   margin-bottom: var(--space-md);
 }
 
-/* Logged out state */
+/* Unauthenticated State */
 .unauthWrapper {
   text-align: center;
   padding: 60px var(--space-xl);
@@ -801,11 +715,16 @@
 }
 
 @media (max-width: 600px) {
-  .profileCard {
-    flex-direction: column;
-    text-align: center;
+  .sectionCard {
+    padding: var(--space-lg);
   }
-  .profileMeta {
-    justify-content: center;
+  .subCard {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .viewShowtimesLink {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
   }
 }
