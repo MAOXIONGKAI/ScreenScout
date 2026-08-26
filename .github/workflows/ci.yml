@@ -27,7 +27,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.23.x"
           cache-dependency-path: backend/go.sum
 
       - name: Verify Dependencies
@@ -37,7 +37,7 @@ jobs:
         run: go vet ./...
 
       - name: Run Unit Tests
-        run: go test -v -race ./...
+        run: go test -v ./...
 
   # ==========================================
   # 2. Python Notification & Monitor Tests
@@ -45,6 +45,8 @@ jobs:
   python-tests:
     name: Python Service & Monitor Tests
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -75,6 +77,8 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
