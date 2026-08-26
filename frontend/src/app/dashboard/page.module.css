@@ -44,7 +44,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-xl);
-  padding: var(--space-2xl);
+  padding: var(--space-xl) var(--space-2xl);
   background: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-xl);
@@ -66,14 +66,14 @@
 }
 
 .avatarCircle {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-primary), #a855f7);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: #ffffff;
   box-shadow: 0 0 20px rgba(168, 85, 247, 0.35);
@@ -121,6 +121,572 @@
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.5);
   color: #ffffff;
+}
+
+/* Section Cards */
+.sectionCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+  backdrop-filter: blur(16px);
+  margin-bottom: var(--space-xl);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.sectionIcon {
+  font-size: 1.75rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+
+.sectionSubtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Handle Form */
+.handleForm {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.handleInputWrapper {
+  display: flex;
+  align-items: center;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-md);
+  flex: 1;
+  min-width: 240px;
+  transition: all var(--transition-base);
+}
+
+.handleInputWrapper:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+  background: var(--bg-glass-hover);
+}
+
+.handlePrefix {
+  color: #c084fc;
+  font-weight: 700;
+  font-size: var(--font-size-md);
+  margin-right: 4px;
+}
+
+.handleInput {
+  width: 100%;
+  padding: 10px 0;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+
+.saveHandleBtn {
+  padding: 10px 22px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--accent-primary), #a855f7);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.25);
+  white-space: nowrap;
+}
+
+.saveHandleBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.45);
+}
+
+.channelStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.statusDotActive {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 8px #34d399;
+}
+
+.statusDotWarning {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+}
+
+/* Subscription Form */
+.subscriptionForm {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.subInputWrapper {
+  flex: 1;
+  min-width: 260px;
+}
+
+.subInput {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.subInput:focus {
+  border-color: var(--accent-primary);
+  background: var(--bg-glass-hover);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.subscribeBtn {
+  padding: 12px 26px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--accent-primary), #a855f7);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+  white-space: nowrap;
+}
+
+.subscribeBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.5);
+}
+
+/* Subscriptions Tabs */
+.subTabs {
+  display: flex;
+  gap: var(--space-xs);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-lg);
+}
+
+.subTab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.subTab:hover {
+  color: var(--text-primary);
+}
+
+.activeSubTab {
+  color: #c084fc;
+  border-bottom-color: #c084fc;
+}
+
+.countBadge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.activeSubTab .countBadge {
+  background: rgba(168, 85, 247, 0.25);
+  color: #ffffff;
+}
+
+/* Subscription Cards List */
+.subList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.subCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-base);
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.subCard:hover {
+  background: var(--bg-glass-hover);
+  border-color: rgba(192, 132, 252, 0.3);
+}
+
+.subCardTriggered {
+  border-left: 3px solid #34d399;
+}
+
+.subCardMain {
+  flex: 1;
+}
+
+.subStatusBadgeActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #67e8f9;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pulseDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #06b6d4;
+  box-shadow: 0 0 8px #06b6d4;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.5;
+  }
+}
+
+.subStatusBadgeTriggered {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.subHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.matchCountBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #d8b4fe;
+  background: rgba(168, 85, 247, 0.18);
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+}
+
+.subQueryTitle {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+/* Matched Movies Grid & Cards */
+.matchedMoviesGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: var(--space-sm) 0 var(--space-md);
+}
+
+.matchedMovieCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  transition: all var(--transition-base);
+}
+
+.matchedMovieCard:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(192, 132, 252, 0.35);
+}
+
+.matchedMovieTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.movieIcon {
+  font-size: 1rem;
+}
+
+.matchedTitleLink {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #ffffff;
+  transition: color var(--transition-fast);
+}
+
+.matchedTitleLink:hover {
+  color: #c084fc;
+  text-decoration: underline;
+}
+
+.matchedMovieTags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+.cinemaTag {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.gvTag {
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.shawTag {
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.4);
+}
+
+.statusTag {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.showingTag {
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.comingTag {
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.4);
+}
+
+.releaseDateTag {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.viewShowtimesLink {
+  margin-left: auto;
+  color: #d8b4fe;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 8px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+}
+
+.viewShowtimesLink:hover {
+  background: rgba(168, 85, 247, 0.3);
+  color: #ffffff;
+  border-color: rgba(192, 132, 252, 0.6);
+}
+
+.matchedMovieLink {
+  font-size: var(--font-size-xs);
+  color: #d8b4fe;
+  margin-bottom: 2px;
+}
+
+.matchedMovieLink a {
+  color: #c084fc;
+  text-decoration: underline;
+}
+
+.subMetaText {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.subCardActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.remonitorBtn {
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.remonitorBtn:hover {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(192, 132, 252, 0.6);
+  color: #ffffff;
+}
+
+.deleteSubBtn {
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-card);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.deleteSubBtn:hover {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Empty Subscriptions */
+.emptySubs {
+  text-align: center;
+  padding: var(--space-2xl) var(--space-md);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px dashed var(--border-card);
+  border-radius: var(--radius-lg);
+}
+
+.emptySubsIcon {
+  font-size: 2.2rem;
+  margin-bottom: var(--space-xs);
+  opacity: 0.6;
+}
+
+.emptySubsTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.emptySubsText {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* Banners */
+.successBanner {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #6ee7b7;
+  margin-bottom: var(--space-md);
+}
+
+.errorBanner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #fca5a5;
+  margin-bottom: var(--space-md);
 }
 
 /* Logged out state */

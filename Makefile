@@ -49,10 +49,14 @@ scrape-shaw: ## Scrape cinemas, movies, and schedules for Shaw Theatre only
 clean-db: ## Clean expired schedules and outdated movies from database
 	$(PYTHON) movie_scraping/clean/main.py
 
-run-all: db-up ## Run full pipeline locally: start DB, scrape cinemas, scrape movies/schedules, clean DB
+check-subscriptions: ## Match active subscriptions against movies in DB and trigger Telegram alerts
+	$(PYTHON) movie_scraping/monitor/subscription_checker.py
+
+run-all: db-up ## Run full pipeline locally: start DB, scrape cinemas, scrape movies/schedules, clean DB, check subscriptions
 	$(PYTHON) movie_scraping/cinemas/main.py
 	$(PYTHON) movie_scraping/movies_and_schedules/main.py
 	$(PYTHON) movie_scraping/clean/main.py
+	$(PYTHON) movie_scraping/monitor/subscription_checker.py
 
 docker-scrape-cinemas: ## [Docker] Scrape cinema locations inside Docker container
 	docker compose run --rm scrape-cinemas

@@ -13,6 +13,7 @@ import (
 	"github.com/maoxiongkai/screenscout-backend/handler"
 	"github.com/maoxiongkai/screenscout-backend/middleware"
 	"github.com/maoxiongkai/screenscout-backend/repo"
+	"github.com/maoxiongkai/screenscout-backend/service"
 )
 
 func main() {
@@ -48,18 +49,27 @@ func main() {
 	movieRepo := repo.NewMovieRepo(pool)
 	cinemaRepo := repo.NewCinemaRepo(pool)
 	userRepo := repo.NewUserRepo(pool)
+	subRepo := repo.NewSubscriptionRepo(pool)
 
-	// Ensure users table exists
+	// Ensure tables exist
 	if err := userRepo.EnsureUserTable(ctx); err != nil {
 		log.Printf("Warning: ensure user table failed: %v", err)
 	} else {
 		fmt.Println("✓ Users table verified")
 	}
 
-	// Initialize handlers
+	if err := subRepo.EnsureSubscriptionTables(ctx); err != nil {
+		log.Printf("Warning: ensure subscription tables failed: %v", err)
+	} else {
+		fmt.Println("✓ Subscription tables verified")
+	}
+
+	// Initialize services & handlers
+	tgService := service.NewTelegramService()
 	movieHandler := handler.NewMovieHandler(movieRepo)
 	cinemaHandler := handler.NewCinemaHandler(cinemaRepo)
 	authHandler := handler.NewAuthHandler(userRepo)
+	subHandler := handler.NewSubscriptionHandler(subRepo, userRepo, tgService)
 
 	// Create Hertz server
 	h := server.Default(server.WithHostPorts(":8080"))
@@ -91,6 +101,23 @@ func main() {
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 			auth.GET("/me", middleware.AuthRequired(), authHandler.Me)
+		}
+
+		// User notification settings
+		userGroup := api.Group("/user", middleware.AuthRequired())
+		{
+			userGroup.GET("/notification-channel", subHandler.GetNotificationChannel)
+			userGroup.POST("/notification-channel", subHandler.UpdateNotificationChannel)
+		}
+
+		// Subscription routes
+		subGroup := api.Group("/subscriptions")
+		{
+			subGroup.GET("", middleware.AuthRequired(), subHandler.ListSubscriptions)
+			subGroup.POST("", middleware.AuthRequired(), subHandler.CreateSubscription)
+			subGroup.DELETE("/:id", middleware.AuthRequired(), subHandler.DeleteSubscription)
+			subGroup.POST("/:id/toggle", middleware.AuthRequired(), subHandler.ToggleSubscription)
+			subGroup.POST("/check", subHandler.CheckSubscriptions)
 		}
 	}
 

@@ -83,3 +83,38 @@ export interface RegisterPayload {
   username: string;
   password: string;
 }
+
+// NotificationChannel represents a registered alert channel (Telegram)
+export interface NotificationChannel {
+  id: number;
+  user_id: number;
+  channel_type: string;
+  channel_user_id: string;
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// MatchedMovieItem represents a single movie matched by a subscription
+export interface MatchedMovieItem {
+  id: number;
+  title: string;
+  provider: string;
+  status: string;
+  release_date: string;
+  poster_url?: string;
+}
+
+// Subscription represents a movie monitoring subscription job
+export interface Subscription {
+  id: number;
+  user_id: number;
+  movie_query: string;
+  is_active: boolean;
+  matched_movie_id?: number;
+  matched_movie_title?: string;
+  matched_movies?: MatchedMovieItem[];
+  triggered_at?: string;
+  created_at: string;
+  updated_at: string;
+}

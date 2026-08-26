@@ -6,6 +6,8 @@ import {
   LoginPayload,
   RegisterPayload,
   User,
+  NotificationChannel,
+  Subscription,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -103,6 +105,118 @@ export async function fetchCurrentUser(token: string): Promise<User> {
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || "Session expired");
+  }
+  return data;
+}
+
+// Notification Channel API
+export async function fetchNotificationChannel(
+  token: string
+): Promise<NotificationChannel | null> {
+  const res = await fetch(`${API_BASE}/api/user/notification-channel`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to fetch notification channel");
+  }
+  return data.channel;
+}
+
+export async function saveNotificationChannel(
+  token: string,
+  channelUserId: string
+): Promise<NotificationChannel> {
+  const res = await fetch(`${API_BASE}/api/user/notification-channel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      channel_type: "TELEGRAM",
+      channel_user_id: channelUserId,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to save notification handle");
+  }
+  return data;
+}
+
+// Subscriptions API
+export async function fetchSubscriptions(
+  token: string
+): Promise<Subscription[]> {
+  const res = await fetch(`${API_BASE}/api/subscriptions`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to fetch subscriptions");
+  }
+  return data.subscriptions || [];
+}
+
+export async function createSubscription(
+  token: string,
+  movieQuery: string
+): Promise<Subscription> {
+  const res = await fetch(`${API_BASE}/api/subscriptions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ movie_query: movieQuery }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to create subscription");
+  }
+  return data;
+}
+
+export async function deleteSubscription(
+  token: string,
+  id: number
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/subscriptions/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to delete subscription");
+  }
+}
+
+export async function toggleSubscription(
+  token: string,
+  id: number
+): Promise<Subscription> {
+  const res = await fetch(`${API_BASE}/api/subscriptions/${id}/toggle`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to toggle subscription");
   }
   return data;
 }

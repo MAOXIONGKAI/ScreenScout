@@ -149,6 +149,13 @@ async def main():
 
     print("=" * 50 + "\n")
 
+    # Monitor & Trigger Subscriptions
+    try:
+        from monitor.subscription_checker import check_and_trigger_subscriptions
+        check_and_trigger_subscriptions()
+    except Exception as e:
+        print(f"[Subscription Monitor Warning] Could not run subscription checker: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
