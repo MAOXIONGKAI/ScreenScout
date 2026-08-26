@@ -11,7 +11,19 @@ export const metadata: Metadata = {
     "Real-time movie availability across all major Singapore cinemas. Browse showtimes for Golden Village and Shaw Theatres in one place.",
   keywords: ["movies", "singapore", "cinema", "showtimes", "golden village", "shaw theatres"],
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      {
+        url: "/brand-icon.svg",
+        type: "image/svg+xml",
+      },
+    ],
+    shortcut: ["/brand-icon.svg"],
+    apple: [
+      {
+        url: "/brand-icon.svg",
+        type: "image/svg+xml",
+      },
+    ],
   },
 };
 
@@ -22,6 +34,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/brand-icon.svg" />
+        <link rel="shortcut icon" href="/brand-icon.svg" />
+        <link rel="apple-touch-icon" href="/brand-icon.svg" />
+      </head>
       <body>
         <AuthProvider>
           <ParticleBackground />
