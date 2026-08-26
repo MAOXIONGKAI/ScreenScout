@@ -163,7 +163,7 @@ export default function MonitoringsPage() {
     }
   };
 
-  // Handle Toggle (Activate / Deactivate / Re-monitor) Subscription
+  // Handle Toggle (Activate / Deactivate) Subscription - remains in current tab
   const handleToggleSubscription = async (id: number) => {
     if (!token) return;
     try {
@@ -171,11 +171,6 @@ export default function MonitoringsPage() {
       setSubscriptions((prev) =>
         prev.map((s) => (s.id === id ? updated : s))
       );
-      if (updated.is_active) {
-        setActiveTab("active");
-      } else {
-        setActiveTab("disabled");
-      }
     } catch (err: any) {
       alert(err.message || "Failed to update subscription");
     }
