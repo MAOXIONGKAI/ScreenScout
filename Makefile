@@ -91,4 +91,18 @@ dev: db-up ## Start database, notification-service, backend, and frontend (all l
 	@cd backend && go run main.go &
 	@cd frontend && npm run dev
 
+test-backend: ## Run Go backend unit tests
+	cd backend && go test -v ./...
+
+test-python: ## Run Python notification and monitor unit tests
+	$(PYTHON) -m unittest discover -s notification_service/tests -p "test_*.py"
+	$(PYTHON) -m unittest discover -s movie_scraping/tests -p "test_*.py"
+
+test-frontend: ## Run frontend typecheck, tests, and production build
+	cd frontend && npm run typecheck
+	cd frontend && npm test
+	cd frontend && npm run build
+
+test: test-backend test-python test-frontend ## Run full automated test suite across Go, Python, and Frontend
+
 
