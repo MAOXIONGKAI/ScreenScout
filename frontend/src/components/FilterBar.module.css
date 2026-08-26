@@ -59,6 +59,7 @@
 
 .filterInput {
   cursor: text;
+  color-scheme: dark;
 }
 
 .filterInput::placeholder {
@@ -82,10 +83,15 @@
   color: var(--text-primary);
 }
 
-/* Color scheme for date/time inputs in dark theme */
+/* Crisp pure-white clock picker indicator */
 .filterInput::-webkit-calendar-picker-indicator {
-  filter: invert(0.6);
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%23ffffff" viewBox="0 0 16 16"><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg>') !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
   cursor: pointer;
+  opacity: 1 !important;
+  filter: none !important;
 }
 
 .clearRow {

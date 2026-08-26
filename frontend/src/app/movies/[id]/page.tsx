@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { MovieDetail } from "@/lib/types";
 import { fetchMovieById } from "@/lib/api";
@@ -66,6 +66,12 @@ export default function MovieDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // Detail Filters State
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [timeFrom, setTimeFrom] = useState("");
+  const [timeTo, setTimeTo] = useState("");
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -74,6 +80,101 @@ export default function MovieDetailPage() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleResetFilters = () => {
+    setSelectedBranch("");
+    setSelectedDate("");
+    setTimeFrom("");
+    setTimeTo("");
+  };
+
+  const schedules = detail?.schedules || [];
+  const movie = detail?.movie;
+
+  // Extract unique branches
+  const branchOptions = useMemo(() => {
+    if (!schedules.length) return [];
+    const branches = new Set<string>();
+    schedules.forEach((cs) => {
+      if (cs.branch) branches.add(cs.branch);
+    });
+    return Array.from(branches).sort();
+  }, [schedules]);
+
+  // Extract unique dates
+  const dateOptions = useMemo(() => {
+    if (!schedules.length) return [];
+    const dates = new Set<string>();
+    schedules.forEach((cs) => {
+      cs.dates.forEach((d) => {
+        if (d.date) dates.add(d.date);
+      });
+    });
+    return Array.from(dates).sort();
+  }, [schedules]);
+
+  // Helper to convert HH:MM(:SS) to minutes from midnight
+  const timeToMinutes = (timeStr: string) => {
+    const parts = timeStr.split(":").map(Number);
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
+  };
+
+  // Filtered schedules computation
+  const filteredSchedules = useMemo(() => {
+    if (!schedules.length) return [];
+
+    const fromMin = timeFrom ? timeToMinutes(timeFrom) : null;
+    const toMin = timeTo ? timeToMinutes(timeTo) : null;
+    const duration = movie?.duration || 0;
+
+    return schedules
+      .filter((cs) => {
+        if (selectedBranch && cs.branch !== selectedBranch) return false;
+        return true;
+      })
+      .map((cs) => {
+        const filteredDates = cs.dates
+          .filter((ds) => {
+            if (selectedDate && ds.date !== selectedDate) return false;
+            return true;
+          })
+          .map((ds) => {
+            const filteredShowtimes = ds.showtimes.filter((st) => {
+              const startMin = timeToMinutes(st.start_time);
+              if (fromMin !== null && startMin < fromMin) {
+                return false;
+              }
+              const endMin = startMin + duration;
+              if (toMin !== null && endMin > toMin) {
+                return false;
+              }
+              return true;
+            });
+            return {
+              ...ds,
+              showtimes: filteredShowtimes,
+            };
+          })
+          .filter((ds) => ds.showtimes.length > 0);
+
+        return {
+          ...cs,
+          dates: filteredDates,
+        };
+      })
+      .filter((cs) => cs.dates.length > 0);
+  }, [schedules, selectedBranch, selectedDate, timeFrom, timeTo, movie?.duration]);
+
+  const totalMatchingShowtimes = useMemo(() => {
+    return filteredSchedules.reduce(
+      (sum, cs) => sum + cs.dates.reduce((dSum, ds) => dSum + ds.showtimes.length, 0),
+      0
+    );
+  }, [filteredSchedules]);
+
+  const hasActiveFilters = Boolean(
+    selectedBranch || selectedDate || timeFrom || timeTo
+  );
 
   if (loading) {
     return (
@@ -86,7 +187,7 @@ export default function MovieDetailPage() {
     );
   }
 
-  if (error || !detail) {
+  if (error || !detail || !movie) {
     return (
       <div className="container">
         <div className={styles.detailPage}>
@@ -102,7 +203,6 @@ export default function MovieDetailPage() {
     );
   }
 
-  const { movie, schedules } = detail;
   const embedUrl = movie.trailer_url
     ? getYouTubeEmbedUrl(movie.trailer_url)
     : null;
@@ -230,10 +330,91 @@ export default function MovieDetailPage() {
 
         {/* Schedules */}
         <section className={styles.schedulesSection}>
-          <h2 className={styles.sectionTitle}>Showtimes</h2>
+          <div className={styles.schedulesHeadingRow}>
+            <h2 className={styles.sectionTitle}>Showtimes</h2>
+            {schedules.length > 0 && (
+              <span className={styles.showtimeCountBadge}>
+                {totalMatchingShowtimes} showtime
+                {totalMatchingShowtimes === 1 ? "" : "s"} available
+              </span>
+            )}
+          </div>
 
-          {schedules && schedules.length > 0 ? (
-            schedules.map((cs) => (
+          {/* Showtime Filters Bar */}
+          {schedules.length > 0 && (
+            <div className={styles.filterSection}>
+              {/* Branch Filter */}
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Branch</label>
+                <select
+                  className={styles.select}
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                >
+                  <option value="">All Branches ({branchOptions.length})</option>
+                  {branchOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Filter */}
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Date</label>
+                <select
+                  className={styles.select}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                >
+                  <option value="">All Dates ({dateOptions.length})</option>
+                  {dateOptions.map((d) => (
+                    <option key={d} value={d}>
+                      {formatScheduleDate(d)} ({d})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Showtime From */}
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Showtime From</label>
+                <input
+                  type="time"
+                  className={styles.timeInput}
+                  value={timeFrom}
+                  onChange={(e) => setTimeFrom(e.target.value)}
+                />
+              </div>
+
+              {/* Estimated End Time Until */}
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Showtime Until</label>
+                <input
+                  type="time"
+                  className={styles.timeInput}
+                  value={timeTo}
+                  onChange={(e) => setTimeTo(e.target.value)}
+                />
+              </div>
+
+              {/* Reset Filters Button */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className={styles.resetBtn}
+                  onClick={handleResetFilters}
+                  title="Reset all showtime filters"
+                >
+                  ✕ Reset Filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {filteredSchedules.length > 0 ? (
+            filteredSchedules.map((cs) => (
               <div key={cs.cinema_id} className={styles.cinemaSchedule}>
                 <div className={styles.cinemaHeader}>
                   <span className={styles.cinemaName}>{cs.cinema_name}</span>
@@ -258,12 +439,24 @@ export default function MovieDetailPage() {
             ))
           ) : (
             <div className={styles.noSchedules}>
-              <div className={styles.noSchedulesIcon}>📅</div>
+              <div className={styles.noSchedulesIcon}>
+                {hasActiveFilters ? "🔍" : "📅"}
+              </div>
               <p className={styles.noSchedulesText}>
-                {movie.status === "coming_soon"
+                {hasActiveFilters
+                  ? "No showtimes match the selected branch, date, or time range."
+                  : movie.status === "coming_soon"
                   ? "Showtimes will be available closer to the release date."
                   : "No upcoming showtimes available."}
               </p>
+              {hasActiveFilters && (
+                <button
+                  className={styles.resetFiltersActionBtn}
+                  onClick={handleResetFilters}
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           )}
         </section>
