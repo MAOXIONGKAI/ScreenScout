@@ -7,6 +7,8 @@ interface FetchMoviesParams {
   branch?: string;
   status?: string;
   search?: string;
+  time_from?: string;
+  time_to?: string;
   page?: number;
   limit?: number;
 }
@@ -20,6 +22,8 @@ export async function fetchMovies(
   if (params.branch) searchParams.set("branch", params.branch);
   if (params.status) searchParams.set("status", params.status);
   if (params.search) searchParams.set("search", params.search);
+  if (params.time_from) searchParams.set("time_from", params.time_from);
+  if (params.time_to) searchParams.set("time_to", params.time_to);
   if (params.page) searchParams.set("page", params.page.toString());
   if (params.limit) searchParams.set("limit", params.limit.toString());
 

@@ -20,6 +20,8 @@ export default function HomePage() {
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [timeFrom, setTimeFrom] = useState("");
+  const [timeTo, setTimeTo] = useState("");
 
   // Debounce search
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function HomePage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [provider, branch, status]);
+  }, [provider, branch, status, timeFrom, timeTo]);
 
   const loadMovies = useCallback(async () => {
     setLoading(true);
@@ -43,6 +45,8 @@ export default function HomePage() {
         branch,
         status,
         search,
+        time_from: timeFrom,
+        time_to: timeTo,
         page,
         limit: LIMIT,
       });
@@ -55,7 +59,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [provider, branch, status, search, page]);
+  }, [provider, branch, status, search, timeFrom, timeTo, page]);
 
   useEffect(() => {
     loadMovies();
@@ -90,9 +94,13 @@ export default function HomePage() {
             provider={provider}
             branch={branch}
             status={status}
+            timeFrom={timeFrom}
+            timeTo={timeTo}
             onProviderChange={setProvider}
             onBranchChange={setBranch}
             onStatusChange={setStatus}
+            onTimeFromChange={setTimeFrom}
+            onTimeToChange={setTimeTo}
           />
         </div>
       </section>
@@ -139,18 +147,41 @@ export default function HomePage() {
           <div className="pagination">
             <button
               className="pagination-btn"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => {
+                setPage((p) => Math.max(1, p - 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
               disabled={page <= 1}
+              aria-label="Previous page"
             >
               ← Previous
             </button>
-            <span className="pagination-info">
-              Page {page} of {totalPages}
-            </span>
+
+            <div className="pagination-dots">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  className={`pagination-dot ${pageNum === page ? "active" : ""}`}
+                  onClick={() => {
+                    setPage(pageNum);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  aria-label={`Go to page ${pageNum}`}
+                  title={`Page ${pageNum}`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+            </div>
+
             <button
               className="pagination-btn"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => {
+                setPage((p) => Math.min(totalPages, p + 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
               disabled={page >= totalPages}
+              aria-label="Next page"
             >
               Next →
             </button>

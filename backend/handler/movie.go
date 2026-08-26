@@ -27,6 +27,8 @@ func (h *MovieHandler) ListMovies(ctx context.Context, c *app.RequestContext) {
 	branch := string(c.Query("branch"))
 	status := string(c.Query("status"))
 	search := string(c.Query("search"))
+	timeFrom := string(c.Query("time_from"))
+	timeTo := string(c.Query("time_to"))
 
 	page, _ := strconv.Atoi(string(c.Query("page")))
 	limit, _ := strconv.Atoi(string(c.Query("limit")))
@@ -43,6 +45,8 @@ func (h *MovieHandler) ListMovies(ctx context.Context, c *app.RequestContext) {
 		Branch:   branch,
 		Status:   status,
 		Search:   search,
+		TimeFrom: timeFrom,
+		TimeTo:   timeTo,
 		Page:     page,
 		Limit:    limit,
 	}

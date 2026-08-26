@@ -26,6 +26,8 @@ type MovieFilters struct {
 	Branch   string
 	Status   string // "now_showing" or "coming_soon"
 	Search   string
+	TimeFrom string // HH:MM (showtime start >= this)
+	TimeTo   string // HH:MM (estimated end time <= this)
 	Page     int
 	Limit    int
 }
@@ -104,6 +106,29 @@ WITH movie_status AS (
 		)`, argIdx))
 		args = append(args, "%"+f.Branch+"%")
 		argIdx++
+	}
+
+	if f.TimeFrom != "" || f.TimeTo != "" {
+		var schedConds []string
+		schedConds = append(schedConds, "s.movie_id = ms.id")
+		schedConds = append(schedConds, "(s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))")
+
+		if f.TimeFrom != "" {
+			schedConds = append(schedConds, fmt.Sprintf("s.start_time >= $%d::time", argIdx))
+			args = append(args, f.TimeFrom)
+			argIdx++
+		}
+
+		if f.TimeTo != "" {
+			schedConds = append(schedConds, fmt.Sprintf("(EXTRACT(EPOCH FROM s.start_time) + ms.duration * 60) <= EXTRACT(EPOCH FROM $%d::time)", argIdx))
+			args = append(args, f.TimeTo)
+			argIdx++
+		}
+
+		conditions = append(conditions, fmt.Sprintf(`EXISTS (
+			SELECT 1 FROM schedules s
+			WHERE %s
+		)`, strings.Join(schedConds, " AND ")))
 	}
 
 	whereClause := ""

@@ -1,21 +1,29 @@
 .filterBar {
   display: flex;
+  flex-direction: column;
   gap: var(--space-md);
-  flex-wrap: wrap;
-  justify-content: center;
   margin-bottom: var(--space-xl);
-  padding: var(--space-md);
+  padding: var(--space-lg);
   background: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-xl);
   backdrop-filter: blur(12px);
 }
 
+.filterRow {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .filterGroup {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  min-width: 160px;
+  min-width: 140px;
+  flex: 1;
+  max-width: 200px;
 }
 
 .filterLabel {
@@ -27,11 +35,11 @@
   padding-left: var(--space-xs);
 }
 
-.filterSelect {
+.filterSelect,
+.filterInput {
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
   padding: var(--space-sm) var(--space-md);
-  padding-right: 2rem;
   background: var(--bg-glass);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
@@ -39,18 +47,32 @@
   outline: none;
   cursor: pointer;
   transition: all var(--transition-base);
+}
+
+.filterSelect {
+  padding-right: 2rem;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7194' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
 
-.filterSelect:hover {
+.filterInput {
+  cursor: text;
+}
+
+.filterInput::placeholder {
+  color: var(--text-muted);
+}
+
+.filterSelect:hover,
+.filterInput:hover {
   border-color: var(--border-hover);
   background-color: var(--bg-glass-hover);
 }
 
-.filterSelect:focus {
+.filterSelect:focus,
+.filterInput:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 2px var(--accent-glow);
 }
@@ -60,8 +82,18 @@
   color: var(--text-primary);
 }
 
+/* Color scheme for date/time inputs in dark theme */
+.filterInput::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
+
+.clearRow {
+  display: flex;
+  justify-content: center;
+}
+
 .clearBtn {
-  align-self: flex-end;
   font-family: var(--font-family);
   font-size: var(--font-size-xs);
   font-weight: 600;
@@ -82,16 +114,13 @@
 }
 
 @media (max-width: 768px) {
-  .filterBar {
+  .filterRow {
     flex-direction: column;
     align-items: stretch;
   }
 
   .filterGroup {
     min-width: unset;
-  }
-
-  .clearBtn {
-    align-self: center;
+    max-width: unset;
   }
 }

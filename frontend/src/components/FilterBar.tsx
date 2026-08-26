@@ -9,18 +9,26 @@ interface FilterBarProps {
   provider: string;
   branch: string;
   status: string;
+  timeFrom: string;
+  timeTo: string;
   onProviderChange: (value: string) => void;
   onBranchChange: (value: string) => void;
   onStatusChange: (value: string) => void;
+  onTimeFromChange: (value: string) => void;
+  onTimeToChange: (value: string) => void;
 }
 
 export default function FilterBar({
   provider,
   branch,
   status,
+  timeFrom,
+  timeTo,
   onProviderChange,
   onBranchChange,
   onStatusChange,
+  onTimeFromChange,
+  onTimeToChange,
 }: FilterBarProps) {
   const [providers, setProviders] = useState<string[]>([]);
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
@@ -51,64 +59,90 @@ export default function FilterBar({
     onProviderChange("");
     onBranchChange("");
     onStatusChange("");
+    onTimeFromChange("");
+    onTimeToChange("");
   };
 
-  const hasFilters = provider || branch || status;
+  const hasFilters = provider || branch || status || timeFrom || timeTo;
 
   return (
     <div className={styles.filterBar}>
-      <div className={styles.filterGroup}>
-        <label className={styles.filterLabel}>Provider</label>
-        <select
-          className={styles.filterSelect}
-          value={provider}
-          onChange={(e) => {
-            onProviderChange(e.target.value);
-            onBranchChange(""); // Reset branch when provider changes
-          }}
-        >
-          <option value="">All Providers</option>
-          {providers.map((p) => (
-            <option key={p} value={p}>
-              {p === "GV" ? "Golden Village" : p === "SHAW" ? "Shaw Theatres" : p}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className={styles.filterRow}>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Provider</label>
+          <select
+            className={styles.filterSelect}
+            value={provider}
+            onChange={(e) => {
+              onProviderChange(e.target.value);
+              onBranchChange(""); // Reset branch when provider changes
+            }}
+          >
+            <option value="">All Providers</option>
+            {providers.map((p) => (
+              <option key={p} value={p}>
+                {p === "GV" ? "Golden Village" : p === "SHAW" ? "Shaw Theatres" : p}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div className={styles.filterGroup}>
-        <label className={styles.filterLabel}>Branch</label>
-        <select
-          className={styles.filterSelect}
-          value={branch}
-          onChange={(e) => onBranchChange(e.target.value)}
-        >
-          <option value="">All Branches</option>
-          {branches.map((b) => (
-            <option key={b} value={b}>
-              {b}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Branch</label>
+          <select
+            className={styles.filterSelect}
+            value={branch}
+            onChange={(e) => onBranchChange(e.target.value)}
+          >
+            <option value="">All Branches</option>
+            {branches.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div className={styles.filterGroup}>
-        <label className={styles.filterLabel}>Status</label>
-        <select
-          className={styles.filterSelect}
-          value={status}
-          onChange={(e) => onStatusChange(e.target.value)}
-        >
-          <option value="">All Status</option>
-          <option value="now_showing">Now Showing</option>
-          <option value="coming_soon">Coming Soon</option>
-        </select>
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Status</label>
+          <select
+            className={styles.filterSelect}
+            value={status}
+            onChange={(e) => onStatusChange(e.target.value)}
+          >
+            <option value="">All Status</option>
+            <option value="now_showing">Now Showing</option>
+            <option value="coming_soon">Coming Soon</option>
+          </select>
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Showtime From</label>
+          <input
+            type="time"
+            className={styles.filterInput}
+            value={timeFrom}
+            onChange={(e) => onTimeFromChange(e.target.value)}
+          />
+        </div>
+
+        <div className={styles.filterGroup}>
+          <label className={styles.filterLabel}>Showtime Until</label>
+          <input
+            type="time"
+            className={styles.filterInput}
+            value={timeTo}
+            onChange={(e) => onTimeToChange(e.target.value)}
+          />
+        </div>
       </div>
 
       {hasFilters && (
-        <button className={styles.clearBtn} onClick={handleClear}>
-          ✕ Clear
-        </button>
+        <div className={styles.clearRow}>
+          <button className={styles.clearBtn} onClick={handleClear}>
+            ✕ Clear All Filters
+          </button>
+        </div>
       )}
     </div>
   );
