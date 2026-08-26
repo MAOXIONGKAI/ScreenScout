@@ -1,4 +1,4 @@
-.PHONY: help setup db-up db-down db-logs db-psql scrape-cinemas scrape-movies scrape-gv scrape-shaw clean-db run-all docker-scrape-cinemas docker-scrape-movies docker-scrape-gv docker-scrape-shaw docker-clean-db docker-run-all
+.PHONY: help setup db-up db-down db-logs db-psql scrape-cinemas scrape-movies scrape-gv scrape-shaw clean-db run-all docker-scrape-cinemas docker-scrape-movies docker-scrape-gv docker-scrape-shaw docker-clean-db docker-run-all backend frontend dev
 
 PYTHON := $(shell if [ -f venv/bin/python ]; then echo "venv/bin/python"; else echo "python3"; fi)
 
