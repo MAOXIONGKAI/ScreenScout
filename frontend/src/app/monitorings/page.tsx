@@ -56,6 +56,10 @@ export default function MonitoringsPage() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  // Delete Confirmation Modal State (for Triggered Tasks)
+  const [subToDelete, setSubToDelete] = useState<{ id: number; query: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Collapsible States
   const [guideCollapsed, setGuideCollapsed] = useState(false);
   const [collapsedTriggeredSubs, setCollapsedTriggeredSubs] = useState<Record<number, boolean>>({});
@@ -189,7 +193,7 @@ export default function MonitoringsPage() {
     }
   };
 
-  // Handle Delete Subscription
+  // Handle Delete Subscription (Direct for active/paused)
   const handleDeleteSubscription = async (id: number) => {
     if (!token) return;
     try {
@@ -197,6 +201,26 @@ export default function MonitoringsPage() {
       setSubscriptions((prev) => prev.filter((s) => s.id !== id));
     } catch (err: any) {
       showToast(err.message || "Failed to delete subscription", "Error", "error");
+    }
+  };
+
+  // Triggered Task Delete Confirmation Handlers
+  const handleRequestDeleteTriggered = (id: number, query: string) => {
+    setSubToDelete({ id, query });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!token || !subToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteSubscription(token, subToDelete.id);
+      setSubscriptions((prev) => prev.filter((s) => s.id !== subToDelete.id));
+      showToast(`Triggered task for "${subToDelete.query}" deleted.`, "Task Removed", "success");
+      setSubToDelete(null);
+    } catch (err: any) {
+      showToast(err.message || "Failed to delete subscription", "Error", "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -311,6 +335,66 @@ export default function MonitoringsPage() {
             >
               ✕
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Triggered Confirmation Dialogue Modal */}
+      {subToDelete && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => !isDeleting && setSubToDelete(null)}
+          role="presentation"
+        >
+          <div
+            className={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+          >
+            <div className={styles.modalHeader}>
+              <div className={styles.modalDangerIcon}>🗑️</div>
+              <div>
+                <h3 id="delete-dialog-title" className={styles.modalTitle}>
+                  Delete Alert History?
+                </h3>
+                <p className={styles.modalSubtitle}>
+                  This record will be permanently removed.
+                </p>
+              </div>
+            </div>
+
+            <div className={styles.modalBody}>
+              <p className={styles.modalText}>
+                Are you sure you want to delete the triggered screening record for:
+              </p>
+              <div className={styles.modalQueryHighlight}>
+                &ldquo;{subToDelete.query}&rdquo;
+              </div>
+              <p className={styles.modalWarningNote}>
+                ⚠️ This action cannot be undone.
+              </p>
+            </div>
+
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.modalCancelBtn}
+                onClick={() => setSubToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.modalConfirmDeleteBtn}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete Record"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -690,7 +774,7 @@ export default function MonitoringsPage() {
                         <div className={styles.subCardActions}>
                           <button
                             className={styles.deleteSubBtn}
-                            onClick={() => handleDeleteSubscription(sub.id)}
+                            onClick={() => handleRequestDeleteTriggered(sub.id, sub.movie_query)}
                             title="Delete record"
                           >
                             Delete
