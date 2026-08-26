@@ -645,27 +645,27 @@ img {
 }
 
 .badge-showing {
-  color: var(--status-showing);
-  background: var(--status-showing-bg);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #10b981;
 }
 
 .badge-coming {
-  color: var(--status-coming);
-  background: var(--status-coming-bg);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #f59e0b;
 }
 
 .badge-gv {
-  color: var(--provider-gv);
-  background: var(--provider-gv-bg);
-  border: 1px solid rgba(225, 29, 72, 0.2);
+  color: #fb7185;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #e11d48;
 }
 
 .badge-shaw {
-  color: var(--provider-shaw);
-  background: var(--provider-shaw-bg);
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #7c3aed;
 }
 
 /* ============================================
