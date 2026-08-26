@@ -67,6 +67,9 @@ def parse_cinema_item(raw: Dict[str, Any]) -> Cinema:
             brand_name = "Shaw Theatre"
             branch_name = full_name
 
+    if branch_name.lower() == "nex":
+        branch_name = "Nex"
+
     address_str = clean_address(shaw.address)
     postal_code = extract_postal_code(address_str, raw.get("postalCode") or raw.get("postal_code"))
 

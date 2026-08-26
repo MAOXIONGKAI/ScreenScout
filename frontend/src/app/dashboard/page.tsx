@@ -104,7 +104,6 @@ export default function DashboardPage() {
           <div className={styles.profileInfo}>
             <h2 className={styles.profileUsername}>{user.username}</h2>
             <div className={styles.profileMeta}>
-              <span>User ID: #{user.id}</span>
               <span>Joined: {formatDate(user.created_at)}</span>
             </div>
           </div>
