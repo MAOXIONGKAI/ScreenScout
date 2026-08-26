@@ -22,30 +22,34 @@ class TelegramClient:
         self.username_to_chat_id: Dict[str, int] = {}
         self.last_update_id = 0
 
+        self.welcomed_users: set = set()
+
         self._load_cache()
         if self.token:
             self._fetch_bot_info()
             self.sync_updates()
 
     def _load_cache(self) -> None:
-        """Load cached username -> chat_id mappings from disk."""
+        """Load cached username -> chat_id mappings and welcomed users from disk."""
         if self.cache_file.exists():
             try:
                 with open(self.cache_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self.username_to_chat_id = {k.lower(): v for k, v in data.get("users", {}).items()}
                     self.last_update_id = data.get("last_update_id", 0)
+                    self.welcomed_users = set(data.get("welcomed_users", []))
                     logger.info(f"Loaded {len(self.username_to_chat_id)} cached Telegram users")
             except Exception as e:
                 logger.warning(f"Could not load cache file: {e}")
 
     def _save_cache(self) -> None:
-        """Persist username mappings to disk."""
+        """Persist username mappings and welcomed users to disk."""
         try:
             with open(self.cache_file, "w", encoding="utf-8") as f:
                 json.dump({
                     "users": self.username_to_chat_id,
                     "last_update_id": self.last_update_id,
+                    "welcomed_users": sorted(list(self.welcomed_users)),
                 }, f, indent=2)
         except Exception as e:
             logger.warning(f"Could not save cache file: {e}")
@@ -165,8 +169,13 @@ class TelegramClient:
             return True
 
     def _send_welcome(self, chat_id: int, handle: str, first_name: str) -> None:
-        """Send welcome confirmation when Telegram setup is confirmed on both ends."""
+        """Send welcome confirmation when Telegram setup is confirmed on both ends (sent at most once per user)."""
         clean_handle = handle.lstrip("@").strip()
+        user_key = clean_handle.lower()
+        if user_key in self.welcomed_users:
+            logger.debug(f"User @{clean_handle} has already received the welcome message, skipping.")
+            return
+
         escaped_handle = clean_handle.replace("_", "\\_")
         clean_first = first_name.strip().replace("*", "") if first_name else clean_handle
 
@@ -183,6 +192,7 @@ class TelegramClient:
             "text": welcome_text,
             "parse_mode": "Markdown",
         }
+        delivered = False
         try:
             req = urllib.request.Request(
                 url,
@@ -191,6 +201,7 @@ class TelegramClient:
             )
             urllib.request.urlopen(req, timeout=8)
             logger.info(f"Welcome confirmation delivered to @{clean_handle} (chat_id: {chat_id})")
+            delivered = True
         except Exception as e:
             # Fallback to plain text if markdown parse error occurs
             try:
@@ -202,8 +213,13 @@ class TelegramClient:
                 )
                 urllib.request.urlopen(req, timeout=8)
                 logger.info(f"Welcome confirmation delivered in plain text to @{clean_handle} (chat_id: {chat_id})")
+                delivered = True
             except Exception as retry_err:
                 logger.debug(f"Could not send welcome message to {chat_id}: {retry_err}")
+
+        if delivered:
+            self.welcomed_users.add(user_key)
+            self._save_cache()
 
     def _send_pending_instructions(self, chat_id: int, handle: str, first_name: str) -> None:
         """Send instructions if user clicked /start on bot before saving handle on website."""
