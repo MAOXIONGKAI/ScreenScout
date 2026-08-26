@@ -72,3 +72,19 @@ func TestFormatMovieAlertMessage_MultipleMovies(t *testing.T) {
 		t.Error("Message should map Shaw to Shaw Theatres")
 	}
 }
+
+func TestFormatWelcomeMessage(t *testing.T) {
+	msg := FormatWelcomeMessage("X", "@xXG_YXx")
+	if !strings.Contains(msg, "Welcome to ScreenScout, X!") {
+		t.Error("Welcome message should contain user name")
+	}
+	if !strings.Contains(msg, "Your Telegram account (@xXG\\_YXx) is now linked") {
+		t.Error("Welcome message should contain escaped handle")
+	}
+	if !strings.Contains(msg, "Golden Village & Shaw Theatres") {
+		t.Error("Welcome message should list supported cinemas")
+	}
+	if !strings.Contains(msg, "Happy movie hunting! 🍿") {
+		t.Error("Welcome message should contain closing tagline")
+	}
+}

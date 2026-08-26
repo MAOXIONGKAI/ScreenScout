@@ -92,6 +92,18 @@ func (h *SubscriptionHandler) UpdateNotificationChannel(ctx context.Context, c *
 		return
 	}
 
+	// If enabled and handle provided, send welcome confirmation if bot has user's chat_id
+	if isEnabled && channelType == "TELEGRAM" {
+		username := ""
+		if user, uErr := h.UserRepo.GetUserByID(ctx, userID); uErr == nil && user != nil {
+			username = user.Username
+		}
+		welcomeMsg := service.FormatWelcomeMessage(username, handle)
+		go func() {
+			_, _ = h.Telegram.SendNotification(handle, welcomeMsg)
+		}()
+	}
+
 	c.JSON(http.StatusOK, ch)
 }
 

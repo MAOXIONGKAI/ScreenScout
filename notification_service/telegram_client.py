@@ -129,12 +129,15 @@ class TelegramClient:
 
                             self.username_to_chat_id[clean_name] = chat_id
 
-                            # If user sent /start, send a confirmation welcome message
+                            # If user sent /start, verify if both actions (bot start + website handle) are available
                             if text.startswith("/start"):
-                                self._send_welcome(chat_id, clean_name, first_name)
+                                if self._is_user_linked_on_website(clean_name):
+                                    self._send_welcome(chat_id, clean_name, first_name)
+                                else:
+                                    self._send_pending_instructions(chat_id, clean_name, first_name)
 
                         elif chat_id and text.startswith("/start"):
-                            # If user has no public @username, map by first_name or numeric ID
+                            # If user has no public @username, send welcome with chat_id
                             self._send_welcome(chat_id, str(chat_id), first_name)
 
                     if updates:
@@ -145,11 +148,31 @@ class TelegramClient:
 
         return new_users_count
 
+    def _is_user_linked_on_website(self, username: str) -> bool:
+        """Check if user has registered their handle in notification_channels table."""
+        try:
+            import psycopg2
+            clean = username.lstrip("@").strip().lower()
+            with psycopg2.connect(config.DATABASE_URL) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT 1 FROM notification_channels WHERE LOWER(TRIM(LEADING '@' FROM channel_user_id)) = %s AND is_enabled = TRUE LIMIT 1;",
+                        (clean,)
+                    )
+                    return cur.fetchone() is not None
+        except Exception as e:
+            logger.debug(f"DB check for user @{username}: {e}")
+            return True
+
     def _send_welcome(self, chat_id: int, handle: str, first_name: str) -> None:
-        """Send welcome confirmation when a user presses /start."""
+        """Send welcome confirmation when Telegram setup is confirmed on both ends."""
+        clean_handle = handle.lstrip("@").strip()
+        escaped_handle = clean_handle.replace("_", "\\_")
+        clean_first = first_name.strip().replace("*", "") if first_name else clean_handle
+
         welcome_text = (
-            f"🎬 *Welcome to ScreenScout, {first_name}!*\n\n"
-            f"✅ Your Telegram account (`@{handle}`) is now linked for real-time movie notifications!\n\n"
+            f"🎬 *Welcome to ScreenScout, {clean_first}!*\n\n"
+            f"✅ Your Telegram account (@{escaped_handle}) is now linked for real-time movie notifications!\n\n"
             f"You will automatically receive alerts here the moment showtimes or new screenings "
             f"for your subscribed movies are published across Singapore cinemas (Golden Village & Shaw Theatres).\n\n"
             f"Happy movie hunting! 🍿"
@@ -166,9 +189,50 @@ class TelegramClient:
                 data=json.dumps(payload).encode("utf-8"),
                 headers={"Content-Type": "application/json"},
             )
-            urllib.request.urlopen(req, timeout=5)
+            urllib.request.urlopen(req, timeout=8)
+            logger.info(f"Welcome confirmation delivered to @{clean_handle} (chat_id: {chat_id})")
         except Exception as e:
-            logger.debug(f"Could not send welcome message to {chat_id}: {e}")
+            # Fallback to plain text if markdown parse error occurs
+            try:
+                payload.pop("parse_mode", None)
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                )
+                urllib.request.urlopen(req, timeout=8)
+                logger.info(f"Welcome confirmation delivered in plain text to @{clean_handle} (chat_id: {chat_id})")
+            except Exception as retry_err:
+                logger.debug(f"Could not send welcome message to {chat_id}: {retry_err}")
+
+    def _send_pending_instructions(self, chat_id: int, handle: str, first_name: str) -> None:
+        """Send instructions if user clicked /start on bot before saving handle on website."""
+        clean_handle = handle.lstrip("@").strip()
+        clean_first = first_name.strip().replace("*", "") if first_name else clean_handle
+        escaped_handle = clean_handle.replace("_", "\\_")
+
+        msg = (
+            f"👋 *Hello {clean_first}!*\n\n"
+            f"You've connected to *@The_ScreenScout_Bot*! 🎬\n\n"
+            f"To complete your alert setup, please enter your Telegram username (@{escaped_handle}) "
+            f"in your **Movie Monitorings** dashboard on the ScreenScout website (http://localhost:3000/monitorings).\n\n"
+            f"Once saved, you'll receive your welcome confirmation and start getting real-time alerts! ✨"
+        )
+        url = f"https://api.telegram.org/bot{self.token}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": msg,
+            "parse_mode": "Markdown",
+        }
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=8)
+        except Exception:
+            pass
 
     def resolve_chat_id(self, recipient: str) -> Optional[Union[int, str]]:
         """

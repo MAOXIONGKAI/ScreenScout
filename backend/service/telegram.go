@@ -74,6 +74,23 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 	return sb.String()
 }
 
+// FormatWelcomeMessage formats the confirmation text when a user links their Telegram account.
+func FormatWelcomeMessage(name, handle string) string {
+	cleanHandle := strings.TrimPrefix(strings.TrimSpace(handle), "@")
+	escapedHandle := strings.ReplaceAll(cleanHandle, "_", "\\_")
+	cleanName := strings.TrimSpace(name)
+	if cleanName == "" {
+		cleanName = cleanHandle
+	}
+	cleanName = strings.ReplaceAll(cleanName, "*", "")
+
+	return fmt.Sprintf("🎬 *Welcome to ScreenScout, %s!*\n\n"+
+		"✅ Your Telegram account (@%s) is now linked for real-time movie notifications!\n\n"+
+		"You will automatically receive alerts here the moment showtimes or new screenings "+
+		"for your subscribed movies are published across Singapore cinemas (Golden Village & Shaw Theatres).\n\n"+
+		"Happy movie hunting! 🍿", cleanName, escapedHandle)
+}
+
 // SendNotification dispatches a message to the user's Telegram handle or chat ID.
 func (s *TelegramService) SendNotification(recipient, message string) (string, error) {
 	// 1. Try Notification Service first if configured or available
