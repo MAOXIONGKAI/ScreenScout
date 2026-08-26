@@ -452,6 +452,10 @@ func (r *SubscriptionRepo) ToggleSubscription(ctx context.Context, userID, subID
 	query := `
 		UPDATE subscriptions
 		SET is_active = NOT is_active,
+		    triggered_at = CASE WHEN NOT is_active = TRUE THEN NULL ELSE triggered_at END,
+		    matched_movie_id = CASE WHEN NOT is_active = TRUE THEN NULL ELSE matched_movie_id END,
+		    matched_movie_title = CASE WHEN NOT is_active = TRUE THEN NULL ELSE matched_movie_title END,
+		    matched_movies = CASE WHEN NOT is_active = TRUE THEN '[]'::jsonb ELSE matched_movies END,
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1 AND user_id = $2
 		RETURNING id, user_id, movie_query, is_active, matched_movie_id, matched_movie_title, COALESCE(matched_movies, '[]'::jsonb), triggered_at, created_at, updated_at

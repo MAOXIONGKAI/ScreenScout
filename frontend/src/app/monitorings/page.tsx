@@ -30,7 +30,7 @@ export default function MonitoringsPage() {
   const [creatingSub, setCreatingSub] = useState(false);
   const [subSuccess, setSubSuccess] = useState("");
   const [subError, setSubError] = useState("");
-  const [activeTab, setActiveTab] = useState<"active" | "triggered">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "disabled" | "triggered">("active");
 
   // Collapsible States
   const [guideCollapsed, setGuideCollapsed] = useState(false);
@@ -163,7 +163,7 @@ export default function MonitoringsPage() {
     }
   };
 
-  // Handle Toggle (Re-monitor) Subscription
+  // Handle Toggle (Activate / Deactivate / Re-monitor) Subscription
   const handleToggleSubscription = async (id: number) => {
     if (!token) return;
     try {
@@ -173,6 +173,8 @@ export default function MonitoringsPage() {
       );
       if (updated.is_active) {
         setActiveTab("active");
+      } else {
+        setActiveTab("disabled");
       }
     } catch (err: any) {
       alert(err.message || "Failed to update subscription");
@@ -230,7 +232,8 @@ export default function MonitoringsPage() {
   }
 
   const activeSubs = subscriptions.filter((s) => s.is_active);
-  const triggeredSubs = subscriptions.filter((s) => !s.is_active);
+  const disabledSubs = subscriptions.filter((s) => !s.is_active && !s.triggered_at);
+  const triggeredSubs = subscriptions.filter((s) => !s.is_active && Boolean(s.triggered_at));
 
   return (
     <div className="container">
@@ -420,6 +423,13 @@ export default function MonitoringsPage() {
               <span className={styles.countBadge}>{activeSubs.length}</span>
             </button>
             <button
+              className={`${styles.subTab} ${activeTab === "disabled" ? styles.activeSubTab : ""}`}
+              onClick={() => setActiveTab("disabled")}
+            >
+              <span>Disabled Tasks</span>
+              <span className={styles.countBadge}>{disabledSubs.length}</span>
+            </button>
+            <button
               className={`${styles.subTab} ${activeTab === "triggered" ? styles.activeSubTab : ""}`}
               onClick={() => setActiveTab("triggered")}
             >
@@ -448,11 +458,28 @@ export default function MonitoringsPage() {
                         Tracking started: {formatDate(sub.created_at)}
                       </p>
                     </div>
-                    <div className={styles.subCardActions}>
+                    <div className={styles.subCardRightActions}>
+                      <div className={styles.toggleControlWrapper}>
+                        <span className={styles.toggleControlLabel}>
+                          Active
+                        </span>
+                        <label
+                          className={styles.toggleSwitch}
+                          title="Click to pause monitoring (move to Disabled Tasks)"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={true}
+                            onChange={() => handleToggleSubscription(sub.id)}
+                            aria-label={`Pause monitoring for ${sub.movie_query}`}
+                          />
+                          <span className={styles.toggleSlider} />
+                        </label>
+                      </div>
                       <button
                         className={styles.deleteSubBtn}
                         onClick={() => handleDeleteSubscription(sub.id)}
-                        title="Cancel monitoring"
+                        title="Cancel and remove monitoring"
                       >
                         Cancel
                       </button>
@@ -465,6 +492,58 @@ export default function MonitoringsPage() {
                   <p className={styles.emptySubsTitle}>No active monitoring jobs</p>
                   <p className={styles.emptySubsText}>
                     Type a movie keyword above and click &ldquo;Track Movie&rdquo; to start automated 24/7 screening detection.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : activeTab === "disabled" ? (
+            <div className={styles.subList}>
+              {disabledSubs.length > 0 ? (
+                disabledSubs.map((sub) => (
+                  <div key={sub.id} className={styles.subCard}>
+                    <div className={styles.subCardMain}>
+                      <div className={styles.subStatusBadgePaused}>
+                        <span>⏸ Paused</span>
+                      </div>
+                      <h3 className={styles.subQueryTitle}>&ldquo;{sub.movie_query}&rdquo;</h3>
+                      <p className={styles.subMetaText}>
+                        Tracking created: {formatDate(sub.created_at)}
+                      </p>
+                    </div>
+                    <div className={styles.subCardRightActions}>
+                      <div className={styles.toggleControlWrapper}>
+                        <span className={styles.toggleControlLabel}>
+                          Paused
+                        </span>
+                        <label
+                          className={styles.toggleSwitch}
+                          title="Click to resume monitoring (move to Active Monitoring)"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            onChange={() => handleToggleSubscription(sub.id)}
+                            aria-label={`Resume monitoring for ${sub.movie_query}`}
+                          />
+                          <span className={styles.toggleSlider} />
+                        </label>
+                      </div>
+                      <button
+                        className={styles.deleteSubBtn}
+                        onClick={() => handleDeleteSubscription(sub.id)}
+                        title="Cancel and remove monitoring"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className={styles.emptySubs}>
+                  <div className={styles.emptySubsIcon}>⏸</div>
+                  <p className={styles.emptySubsTitle}>No disabled tasks</p>
+                  <p className={styles.emptySubsText}>
+                    When you pause an active monitoring job using its toggle switch, it will appear here.
                   </p>
                 </div>
               )}
@@ -531,13 +610,6 @@ export default function MonitoringsPage() {
                         </div>
 
                         <div className={styles.subCardActions}>
-                          <button
-                            className={styles.remonitorBtn}
-                            onClick={() => handleToggleSubscription(sub.id)}
-                            title="Re-activate monitoring"
-                          >
-                            Re-monitor
-                          </button>
                           <button
                             className={styles.deleteSubBtn}
                             onClick={() => handleDeleteSubscription(sub.id)}
