@@ -32,6 +32,12 @@ export default function AuthModal() {
 
   if (!isAuthModalOpen) return null;
 
+  const hasMinLength = password.length >= 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`§±]/.test(password);
+  const isPasswordValid = hasMinLength && hasUpperCase && hasLowerCase && hasSpecialChar;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -41,14 +47,17 @@ export default function AuthModal() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
-    if (tab === "register" && password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
+    if (tab === "register") {
+      if (!isPasswordValid) {
+        setError(
+          "Password must be at least 8 characters, with 1 uppercase letter, 1 lowercase letter, and 1 special character."
+        );
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("Passwords do not match");
+        return;
+      }
     }
 
     setLoading(true);
@@ -111,7 +120,7 @@ export default function AuthModal() {
         <p className={styles.subtitle}>
           {tab === "login"
             ? "Sign in to access your saved movies & custom preferences."
-            : "Create your free account to unlock personalised features."}
+            : "Create your free account with a secure password."}
         </p>
 
         {/* Error Banner */}
@@ -143,7 +152,11 @@ export default function AuthModal() {
               <input
                 type={showPassword ? "text" : "password"}
                 className={styles.input}
-                placeholder="At least 6 characters"
+                placeholder={
+                  tab === "register"
+                    ? "Min. 8 chars, Upper, Lower, Special"
+                    : "Enter your password"
+                }
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={
@@ -160,6 +173,40 @@ export default function AuthModal() {
                 {showPassword ? "👁️" : "👁️‍🗨️"}
               </button>
             </div>
+
+            {/* Password rules checklist for registration */}
+            {tab === "register" && (
+              <div className={styles.rulesList}>
+                <span
+                  className={`${styles.ruleChip} ${
+                    hasMinLength ? styles.ruleMet : ""
+                  }`}
+                >
+                  {hasMinLength ? "✓" : "○"} 8+ chars
+                </span>
+                <span
+                  className={`${styles.ruleChip} ${
+                    hasUpperCase ? styles.ruleMet : ""
+                  }`}
+                >
+                  {hasUpperCase ? "✓" : "○"} 1 Uppercase
+                </span>
+                <span
+                  className={`${styles.ruleChip} ${
+                    hasLowerCase ? styles.ruleMet : ""
+                  }`}
+                >
+                  {hasLowerCase ? "✓" : "○"} 1 Lowercase
+                </span>
+                <span
+                  className={`${styles.ruleChip} ${
+                    hasSpecialChar ? styles.ruleMet : ""
+                  }`}
+                >
+                  {hasSpecialChar ? "✓" : "○"} 1 Special (!@#$)
+                </span>
+              </div>
+            )}
           </div>
 
           {tab === "register" && (

@@ -20,6 +20,7 @@ export default function DashboardPage() {
     try {
       const date = new Date(dateStr);
       return date.toLocaleDateString("en-SG", {
+        timeZone: "Asia/Singapore",
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -53,16 +54,25 @@ export default function DashboardPage() {
             <div className={styles.unauthIcon}>🔒</div>
             <h1 className={styles.unauthTitle}>Sign In Required</h1>
             <p className={styles.unauthText}>
-              Please sign in to view your user dashboard, account details, and preferences.
+              Please sign in or create an account to view your user profile and manage your preferences.
             </p>
             <div className={styles.unauthActions}>
               <button
-                className={styles.browseBtn}
+                className={styles.signInCtaBtn}
                 onClick={() => openAuthModal("login")}
               >
-                Sign In to Account
+                <span>✨</span>
+                <span>Sign In to Account</span>
               </button>
-              <Link href="/" className={styles.logoutBtn} style={{ color: "var(--text-secondary)", borderColor: "var(--border-card)" }}>
+              <button
+                className={styles.registerCtaBtn}
+                onClick={() => openAuthModal("register")}
+              >
+                Create Account
+              </button>
+            </div>
+            <div style={{ marginTop: "var(--space-xl)" }}>
+              <Link href="/" className={styles.backLink}>
                 ← Back to Movies
               </Link>
             </div>

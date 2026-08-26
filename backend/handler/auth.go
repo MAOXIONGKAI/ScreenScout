@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
+	"unicode"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/maoxiongkai/screenscout-backend/middleware"
@@ -18,6 +20,36 @@ var (
 	usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]{3,55}$`)
 	sgtLocation   = time.FixedZone("SGT", 8*3600)
 )
+
+// validatePassword ensures password has >= 8 chars, 1 uppercase, 1 lowercase, 1 special character.
+func validatePassword(password string) error {
+	if len(password) < 8 {
+		return errors.New("password must be at least 8 characters long")
+	}
+
+	var hasUpper, hasLower, hasSpecial bool
+	for _, ch := range password {
+		switch {
+		case unicode.IsUpper(ch):
+			hasUpper = true
+		case unicode.IsLower(ch):
+			hasLower = true
+		case unicode.IsPunct(ch) || unicode.IsSymbol(ch):
+			hasSpecial = true
+		}
+	}
+
+	if !hasUpper {
+		return errors.New("password must contain at least 1 uppercase letter")
+	}
+	if !hasLower {
+		return errors.New("password must contain at least 1 lowercase letter")
+	}
+	if !hasSpecial {
+		return errors.New("password must contain at least 1 special character (e.g. !@#$%^&*)")
+	}
+	return nil
+}
 
 // AuthHandler handles authentication HTTP requests.
 type AuthHandler struct {
@@ -47,9 +79,9 @@ func (h *AuthHandler) Register(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	if len(req.Password) < 6 {
+	if err := validatePassword(req.Password); err != nil {
 		c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "password must be at least 6 characters long",
+			"error": err.Error(),
 		})
 		return
 	}

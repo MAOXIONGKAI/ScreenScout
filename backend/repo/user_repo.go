@@ -34,21 +34,30 @@ func (r *UserRepo) EnsureUserTable(ctx context.Context) error {
 		id                  BIGINT PRIMARY KEY,
 		username            VARCHAR(55) NOT NULL UNIQUE,
 		hashed_password     TEXT NOT NULL,
-		created_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore'),
-		updated_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')
+		created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE SEQUENCE IF NOT EXISTS users_id_seq START WITH 1 INCREMENT BY 1;
 	ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq');
 
-	-- Migrate columns to TIMESTAMPTZ if previously created as plain TIMESTAMP
+	-- Migrate existing columns from TIMESTAMP to TIMESTAMPTZ if needed
 	DO $$ 
 	BEGIN
-		ALTER TABLE users ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'Asia/Singapore';
-		ALTER TABLE users ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'Asia/Singapore';
+		IF EXISTS (
+			SELECT 1 FROM information_schema.columns 
+			WHERE table_name = 'users' AND column_name = 'created_at' AND data_type = 'timestamp without time zone'
+		) THEN
+			ALTER TABLE users ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
+			ALTER TABLE users ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC';
+		END IF;
 	EXCEPTION
 		WHEN OTHERS THEN NULL;
 	END $$;
+
+	-- Set column defaults
+	ALTER TABLE users ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
+	ALTER TABLE users ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
 
 	CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 	`
