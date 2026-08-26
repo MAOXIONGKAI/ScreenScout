@@ -143,6 +143,12 @@ func (h *SubscriptionHandler) CreateSubscription(ctx context.Context, c *app.Req
 
 	sub, err := h.SubRepo.CreateSubscription(ctx, userID, query)
 	if err != nil {
+		if errors.Is(err, repo.ErrMaxActiveSubscriptionsReached) {
+			c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "Maximum active monitoring limit reached (10 tasks). Please pause or cancel an active task first.",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
@@ -237,6 +243,12 @@ func (h *SubscriptionHandler) ToggleSubscription(ctx context.Context, c *app.Req
 	if err != nil {
 		if errors.Is(err, repo.ErrSubscriptionNotFound) {
 			c.JSON(http.StatusNotFound, map[string]string{"error": "subscription not found"})
+			return
+		}
+		if errors.Is(err, repo.ErrMaxActiveSubscriptionsReached) {
+			c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "Maximum active monitoring limit reached (10 tasks). Please pause or cancel an active task first.",
+			})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

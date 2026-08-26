@@ -1,3 +1,109 @@
+/* Floating Toast Notification */
+.toastContainer {
+  position: fixed;
+  top: 84px;
+  right: 24px;
+  z-index: 99999;
+  max-width: 440px;
+  width: calc(100% - 48px);
+  pointer-events: none;
+}
+
+.toastCard {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--transition-base);
+}
+
+@keyframes toastSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toastError {
+  background: rgba(26, 11, 16, 0.96);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 12px 40px rgba(239, 68, 68, 0.22), 0 0 0 1px rgba(239, 68, 68, 0.15);
+}
+
+.toastWarning {
+  background: rgba(28, 19, 9, 0.96);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  box-shadow: 0 12px 40px rgba(245, 158, 11, 0.22);
+}
+
+.toastSuccess {
+  background: rgba(10, 26, 18, 0.96);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 12px 40px rgba(16, 185, 129, 0.22);
+}
+
+.toastIcon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.toastBody {
+  flex: 1;
+}
+
+.toastTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  color: #f87171;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.toastWarning .toastTitle {
+  color: #fbbf24;
+}
+
+.toastSuccess .toastTitle {
+  color: #34d399;
+}
+
+.toastMessage {
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.toastCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: all var(--transition-fast);
+  margin-top: -2px;
+  margin-right: -4px;
+}
+
+.toastCloseBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .wrapper {
   width: 100%;
   max-width: var(--max-width);

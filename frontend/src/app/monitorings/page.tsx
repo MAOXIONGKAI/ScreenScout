@@ -32,6 +32,30 @@ export default function MonitoringsPage() {
   const [subError, setSubError] = useState("");
   const [activeTab, setActiveTab] = useState<"active" | "disabled" | "triggered">("active");
 
+  // Toast Notification State
+  interface ToastState {
+    title: string;
+    message: string;
+    type: "error" | "warning" | "success" | "info";
+  }
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  const showToast = (
+    message: string,
+    title = "Active Limit Reached (Max 10)",
+    type: "error" | "warning" | "success" | "info" = "error"
+  ) => {
+    setToast({ title, message, type });
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   // Collapsible States
   const [guideCollapsed, setGuideCollapsed] = useState(false);
   const [collapsedTriggeredSubs, setCollapsedTriggeredSubs] = useState<Record<number, boolean>>({});
@@ -129,6 +153,17 @@ export default function MonitoringsPage() {
       return;
     }
 
+    // Safety net: Max 10 active monitoring tasks
+    const activeCount = subscriptions.filter((s) => s.is_active).length;
+    if (activeCount >= 10) {
+      showToast(
+        "You have reached the maximum limit of 10 active monitoring tasks. Please pause or cancel an existing task before tracking a new one.",
+        "Active Limit Reached (Max 10)",
+        "error"
+      );
+      return;
+    }
+
     setCreatingSub(true);
     try {
       const newSub = await createSubscription(token, query);
@@ -146,7 +181,9 @@ export default function MonitoringsPage() {
       await loadUserData();
       setTimeout(() => setSubSuccess(""), 5000);
     } catch (err: any) {
-      setSubError(err.message || "Failed to create subscription");
+      const msg = err.message || "Failed to create subscription";
+      setSubError(msg);
+      showToast(msg, "Subscription Error", "error");
     } finally {
       setCreatingSub(false);
     }
@@ -159,20 +196,36 @@ export default function MonitoringsPage() {
       await deleteSubscription(token, id);
       setSubscriptions((prev) => prev.filter((s) => s.id !== id));
     } catch (err: any) {
-      alert(err.message || "Failed to delete subscription");
+      showToast(err.message || "Failed to delete subscription", "Error", "error");
     }
   };
 
   // Handle Toggle (Activate / Deactivate) Subscription - remains in current tab
   const handleToggleSubscription = async (id: number) => {
     if (!token) return;
+    const target = subscriptions.find((s) => s.id === id);
+
+    // Safety net: If activating an inactive task and already at 10 active tasks
+    if (target && !target.is_active) {
+      const activeCount = subscriptions.filter((s) => s.is_active).length;
+      if (activeCount >= 10) {
+        showToast(
+          "Cannot activate this task: You already have 10 active monitoring tasks. Please pause or cancel an active task first.",
+          "Active Limit Reached (Max 10)",
+          "error"
+        );
+        return;
+      }
+    }
+
     try {
       const updated = await toggleSubscription(token, id);
       setSubscriptions((prev) =>
         prev.map((s) => (s.id === id ? updated : s))
       );
     } catch (err: any) {
-      alert(err.message || "Failed to update subscription");
+      const msg = err.message || "Failed to update subscription";
+      showToast(msg, "Action Restricted", "error");
     }
   };
 
@@ -232,6 +285,36 @@ export default function MonitoringsPage() {
 
   return (
     <div className="container">
+      {/* Floating Toast Notification */}
+      {toast && (
+        <div className={styles.toastContainer} role="status" aria-live="polite">
+          <div
+            className={`${styles.toastCard} ${
+              toast.type === "error"
+                ? styles.toastError
+                : toast.type === "warning"
+                ? styles.toastWarning
+                : styles.toastSuccess
+            }`}
+          >
+            <div className={styles.toastIcon}>
+              {toast.type === "error" ? "⚠️" : toast.type === "warning" ? "🔔" : "✨"}
+            </div>
+            <div className={styles.toastBody}>
+              <h4 className={styles.toastTitle}>{toast.title}</h4>
+              <p className={styles.toastMessage}>{toast.message}</p>
+            </div>
+            <button
+              className={styles.toastCloseBtn}
+              onClick={() => setToast(null)}
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={styles.wrapper}>
         {/* Header */}
         <div className={styles.header}>

@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	ErrSubscriptionNotFound = errors.New("subscription not found")
-	ErrChannelNotFound      = errors.New("notification channel not found")
-	sgtZone                 = time.FixedZone("SGT", 8*3600)
+	ErrSubscriptionNotFound           = errors.New("subscription not found")
+	ErrChannelNotFound                = errors.New("notification channel not found")
+	ErrMaxActiveSubscriptionsReached  = errors.New("maximum active monitoring limit reached (10 tasks)")
+	sgtZone                           = time.FixedZone("SGT", 8*3600)
 )
 
 // SubscriptionRepo handles database operations for notification channels and subscriptions.
@@ -168,6 +169,15 @@ func (r *SubscriptionRepo) UpsertNotificationChannel(ctx context.Context, userID
 
 // CreateSubscription inserts a new movie subscription monitoring job.
 func (r *SubscriptionRepo) CreateSubscription(ctx context.Context, userID int64, movieQuery string) (*model.Subscription, error) {
+	// Safety net: check active count limit (max 10 active monitoring tasks per user)
+	var activeCount int
+	if err := r.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM subscriptions WHERE user_id = $1 AND is_active = TRUE`, userID).Scan(&activeCount); err != nil {
+		return nil, fmt.Errorf("count active subscriptions: %w", err)
+	}
+	if activeCount >= 10 {
+		return nil, ErrMaxActiveSubscriptionsReached
+	}
+
 	query := `
 		INSERT INTO subscriptions (user_id, movie_query, is_active, matched_movies)
 		VALUES ($1, $2, TRUE, '[]'::jsonb)
@@ -449,6 +459,27 @@ func (r *SubscriptionRepo) TriggerSubscriptionWithMovies(
 
 // ToggleSubscription toggles an active/inactive subscription.
 func (r *SubscriptionRepo) ToggleSubscription(ctx context.Context, userID, subID int64) (*model.Subscription, error) {
+	// First check current status
+	var currentIsActive bool
+	err := r.Pool.QueryRow(ctx, `SELECT is_active FROM subscriptions WHERE id = $1 AND user_id = $2`, subID, userID).Scan(&currentIsActive)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrSubscriptionNotFound
+		}
+		return nil, fmt.Errorf("check subscription status: %w", err)
+	}
+
+	// If currently inactive, activating it will increase active count. Check limit!
+	if !currentIsActive {
+		var activeCount int
+		if err := r.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM subscriptions WHERE user_id = $1 AND is_active = TRUE`, userID).Scan(&activeCount); err != nil {
+			return nil, fmt.Errorf("count active subscriptions: %w", err)
+		}
+		if activeCount >= 10 {
+			return nil, ErrMaxActiveSubscriptionsReached
+		}
+	}
+
 	query := `
 		UPDATE subscriptions
 		SET is_active = NOT is_active,
@@ -463,7 +494,7 @@ func (r *SubscriptionRepo) ToggleSubscription(ctx context.Context, userID, subID
 
 	var sub model.Subscription
 	var matchedMoviesJSON []byte
-	err := r.Pool.QueryRow(ctx, query, subID, userID).Scan(
+	err = r.Pool.QueryRow(ctx, query, subID, userID).Scan(
 		&sub.ID,
 		&sub.UserID,
 		&sub.MovieQuery,
