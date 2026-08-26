@@ -544,7 +544,7 @@ export default function MonitoringsPage() {
               )}
             </div>
           ) : (
-            <div className={styles.subList}>
+            <div className={`${styles.subList} ${styles.triggeredSubList}`}>
               {triggeredSubs.length > 0 ? (
                 triggeredSubs.map((sub) => {
                   const isCollapsed = Boolean(collapsedTriggeredSubs[sub.id]);
