@@ -1,27 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import {
-  fetchNotificationChannel,
-  saveNotificationChannel,
-} from "@/lib/api";
-import { NotificationChannel } from "@/lib/types";
 import styles from "./page.module.css";
 
 export default function DashboardPage() {
-  const { user, token, isLoading, logout, openAuthModal } = useAuth();
+  const { user, isLoading, logout, openAuthModal } = useAuth();
   const router = useRouter();
-
-  // Notification Channel State
-  const [channel, setChannel] = useState<NotificationChannel | null>(null);
-  const [telegramHandle, setTelegramHandle] = useState("");
-  const [savingChannel, setSavingChannel] = useState(false);
-  const [channelSuccess, setChannelSuccess] = useState("");
-  const [channelError, setChannelError] = useState("");
-  const [guideCollapsed, setGuideCollapsed] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -42,55 +29,6 @@ export default function DashboardPage() {
       });
     } catch {
       return dateStr;
-    }
-  };
-
-  // Load User Data
-  const loadUserData = useCallback(async () => {
-    if (!token) return;
-    try {
-      const ch = await fetchNotificationChannel(token).catch(() => null);
-      if (ch) {
-        setChannel(ch);
-        setTelegramHandle(ch.channel_user_id);
-      } else if (user) {
-        setTelegramHandle(`@${user.username}`);
-      }
-    } catch (err) {
-      console.error("Error loading dashboard data:", err);
-    }
-  }, [token, user]);
-
-  useEffect(() => {
-    if (token) {
-      loadUserData();
-    }
-  }, [token, loadUserData]);
-
-  // Handle Telegram Handle Update
-  const handleSaveTelegram = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) return;
-    setChannelError("");
-    setChannelSuccess("");
-
-    const handle = telegramHandle.trim();
-    if (!handle) {
-      setChannelError("Please enter your Telegram handle (e.g. @your_username)");
-      return;
-    }
-
-    setSavingChannel(true);
-    try {
-      const updated = await saveNotificationChannel(token, handle);
-      setChannel(updated);
-      setTelegramHandle(updated.channel_user_id);
-      setChannelSuccess("✓ Telegram handle saved successfully!");
-      setTimeout(() => setChannelSuccess(""), 4000);
-    } catch (err: any) {
-      setChannelError(err.message || "Failed to save Telegram handle");
-    } finally {
-      setSavingChannel(false);
     }
   };
 
@@ -156,7 +94,7 @@ export default function DashboardPage() {
           </div>
           <h1 className={styles.title}>User Dashboard</h1>
           <p className={styles.subtitle}>
-            Manage your ScreenScout profile and notification preferences.
+            Manage your ScreenScout profile and screening preferences.
           </p>
         </div>
 
@@ -174,145 +112,21 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Section 1: Telegram Notification Settings */}
-        <section className={styles.sectionCard}>
-          <div className={styles.sectionHeader}>
-            <div className={styles.sectionIcon}>💬</div>
-            <div>
-              <h2 className={styles.sectionTitle}>Telegram Notification Settings</h2>
-              <p className={styles.sectionSubtitle}>
-                Link your Telegram account to receive instant alerts when your subscribed movies are published across Singapore cinemas.
-              </p>
-            </div>
-          </div>
-
-          {/* Collapsible Setup Guide (Inside Card) */}
-          <div
-            className={`${styles.cardSetupGuide} ${
-              guideCollapsed ? styles.cardSetupGuideCollapsed : ""
-            }`}
-          >
-            <div
-              className={styles.cardSetupHeader}
-              onClick={() => setGuideCollapsed((prev) => !prev)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setGuideCollapsed((prev) => !prev);
-                }
-              }}
-              title={
-                guideCollapsed
-                  ? "Click to expand Setup Guide"
-                  : "Click to collapse Setup Guide"
-              }
-              aria-expanded={!guideCollapsed}
-            >
-              <h3 className={styles.cardSetupTitle}>📖 Setup Guide</h3>
-              <div className={styles.guideCollapseToggle}>
-                <span
-                  className={`${styles.chevron} ${
-                    guideCollapsed ? styles.chevronCollapsed : ""
-                  }`}
-                >
-                  ▲
-                </span>
-              </div>
-            </div>
-
-            {!guideCollapsed && (
-              <div className={styles.cardStepsList}>
-                <div className={styles.cardStepItem}>
-                  <span className={styles.cardStepNum}>1</span>
-                  <div>
-                    <strong>Start the Bot:</strong> Open{" "}
-                    <a
-                      href="https://t.me/screenscoutBot"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.botLink}
-                    >
-                      @screenscoutBot ↗
-                    </a>{" "}
-                    in Telegram and tap <strong>Start</strong> (<code className={styles.inlineCode}>/start</code>) so Telegram authorizes alerts.
-                  </div>
-                </div>
-                <div className={styles.cardStepItem}>
-                  <span className={styles.cardStepNum}>2</span>
-                  <div>
-                    <strong>Save Your Handle:</strong> Enter your Telegram username (e.g. <code className={styles.inlineCode}>@your_username</code>) below and click <strong>Save Handle</strong>.
-                  </div>
-                </div>
-                <div className={styles.cardStepItem}>
-                  <span className={styles.cardStepNum}>3</span>
-                  <div>
-                    <strong>Receive Alerts:</strong> When your monitored movies are detected, <strong>@screenscoutBot</strong> will message you with direct showtime links!
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {channelSuccess && (
-            <div className={styles.successBanner}>{channelSuccess}</div>
-          )}
-          {channelError && (
-            <div className={styles.errorBanner}>{channelError}</div>
-          )}
-
-          <form className={styles.handleForm} onSubmit={handleSaveTelegram}>
-            <div className={styles.handleInputWrapper}>
-              <span className={styles.handlePrefix}>@</span>
-              <input
-                type="text"
-                className={styles.handleInput}
-                placeholder="your_telegram_handle"
-                value={telegramHandle.startsWith("@") ? telegramHandle.slice(1) : telegramHandle}
-                onChange={(e) => setTelegramHandle(`@${e.target.value.replace(/^@+/, "")}`)}
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className={styles.saveHandleBtn}
-              disabled={savingChannel}
-            >
-              {savingChannel ? "Saving..." : "Save Handle"}
-            </button>
-          </form>
-
-          {channel ? (
-            <div className={styles.channelStatus}>
-              <span className={styles.statusDotActive} />
-              <span>
-                Connected to <strong>{channel.channel_user_id}</strong> (Real-time alerts active)
-              </span>
-            </div>
-          ) : (
-            <div className={styles.channelStatus}>
-              <span className={styles.statusDotWarning} />
-              <span>No Telegram handle registered yet. Complete steps 1 & 2 above to enable alerts.</span>
-            </div>
-          )}
-        </section>
-
-        {/* Section 2: Quick Link to Movie Monitorings */}
+        {/* Section: Quick Link to Movie Monitorings */}
         <section className={styles.sectionCard}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionIcon}>🔔</div>
             <div>
               <h2 className={styles.sectionTitle}>Movie Monitorings</h2>
               <p className={styles.sectionSubtitle}>
-                Set up automated schedule tracking jobs to monitor Singapore cinemas 24/7 for your favorite movies.
+                Set up automated schedule tracking jobs and manage your Telegram notification settings in the Monitorings center.
               </p>
             </div>
           </div>
 
           <div className={styles.monitoringCtaBox}>
             <p className={styles.monitoringCtaText}>
-              Manage your active subscription jobs and browse triggered screening alerts in the dedicated <strong>Monitorings</strong> center.
+              Manage your 24/7 movie screening detection jobs, Telegram handle settings, and triggered history in the dedicated <strong>Monitorings</strong> center.
             </p>
             <Link href="/monitorings" className={styles.goToMonitoringsBtn}>
               <span>Go to Movie Monitorings</span>
