@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [savingChannel, setSavingChannel] = useState(false);
   const [channelSuccess, setChannelSuccess] = useState("");
   const [channelError, setChannelError] = useState("");
+  const [guideCollapsed, setGuideCollapsed] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -178,11 +179,80 @@ export default function DashboardPage() {
           <div className={styles.sectionHeader}>
             <div className={styles.sectionIcon}>💬</div>
             <div>
-              <h2 className={styles.sectionTitle}>Telegram Notification Handle</h2>
+              <h2 className={styles.sectionTitle}>Telegram Notification Settings</h2>
               <p className={styles.sectionSubtitle}>
-                Register your Telegram handle to receive instant alerts when your subscribed movies are published.
+                Link your Telegram account to receive instant alerts when your subscribed movies are published across Singapore cinemas.
               </p>
             </div>
+          </div>
+
+          {/* Collapsible Setup Guide (Inside Card) */}
+          <div
+            className={`${styles.cardSetupGuide} ${
+              guideCollapsed ? styles.cardSetupGuideCollapsed : ""
+            }`}
+          >
+            <div
+              className={styles.cardSetupHeader}
+              onClick={() => setGuideCollapsed((prev) => !prev)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setGuideCollapsed((prev) => !prev);
+                }
+              }}
+              title={
+                guideCollapsed
+                  ? "Click to expand Setup Guide"
+                  : "Click to collapse Setup Guide"
+              }
+              aria-expanded={!guideCollapsed}
+            >
+              <h3 className={styles.cardSetupTitle}>📖 Setup Guide</h3>
+              <div className={styles.guideCollapseToggle}>
+                <span
+                  className={`${styles.chevron} ${
+                    guideCollapsed ? styles.chevronCollapsed : ""
+                  }`}
+                >
+                  ▲
+                </span>
+              </div>
+            </div>
+
+            {!guideCollapsed && (
+              <div className={styles.cardStepsList}>
+                <div className={styles.cardStepItem}>
+                  <span className={styles.cardStepNum}>1</span>
+                  <div>
+                    <strong>Start the Bot:</strong> Open{" "}
+                    <a
+                      href="https://t.me/screenscoutBot"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.botLink}
+                    >
+                      @screenscoutBot ↗
+                    </a>{" "}
+                    in Telegram and tap <strong>Start</strong> (<code className={styles.inlineCode}>/start</code>) so Telegram authorizes alerts.
+                  </div>
+                </div>
+                <div className={styles.cardStepItem}>
+                  <span className={styles.cardStepNum}>2</span>
+                  <div>
+                    <strong>Save Your Handle:</strong> Enter your Telegram username (e.g. <code className={styles.inlineCode}>@your_username</code>) below and click <strong>Save Handle</strong>.
+                  </div>
+                </div>
+                <div className={styles.cardStepItem}>
+                  <span className={styles.cardStepNum}>3</span>
+                  <div>
+                    <strong>Receive Alerts:</strong> When your monitored movies are detected, <strong>@screenscoutBot</strong> will message you with direct showtime links!
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {channelSuccess && (
@@ -223,24 +293,9 @@ export default function DashboardPage() {
           ) : (
             <div className={styles.channelStatus}>
               <span className={styles.statusDotWarning} />
-              <span>No Telegram handle registered yet. Enter your handle above to enable alerts.</span>
+              <span>No Telegram handle registered yet. Complete steps 1 & 2 above to enable alerts.</span>
             </div>
           )}
-
-          <div className={styles.botTipBox}>
-            <span>🤖 Official Bot:</span>
-            <a
-              href="https://t.me/screenscoutBot"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.botLink}
-            >
-              @screenscoutBot ↗
-            </a>
-            <span className={styles.botHintText}>
-              (Send <strong>/start</strong> to the bot so it has permission to message you)
-            </span>
-          </div>
         </section>
 
         {/* Section 2: Quick Link to Movie Monitorings */}
