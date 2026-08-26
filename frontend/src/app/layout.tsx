@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ParticleBackground from "@/components/ParticleBackground";
 
 export const metadata: Metadata = {
   title: "ScreenScout — Singapore Movie Showtimes",
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <ParticleBackground />
         <header className="header">
           <div className="header-inner">
             <a href="/" className="logo">

@@ -237,7 +237,7 @@ export default function MovieDetailPage() {
               <div key={cs.cinema_id} className={styles.cinemaSchedule}>
                 <div className={styles.cinemaHeader}>
                   <span className={styles.cinemaName}>{cs.cinema_name}</span>
-                  <span className={styles.cinemaBranch}>— {cs.branch}</span>
+                  <span className={styles.cinemaBranch}>{cs.branch}</span>
                 </div>
 
                 {cs.dates.map((ds) => (

@@ -152,6 +152,11 @@ img {
   padding: 0 var(--space-lg);
 }
 
+main {
+  position: relative;
+  z-index: 1;
+}
+
 /* ============================================
    Header / Navigation
    ============================================ */

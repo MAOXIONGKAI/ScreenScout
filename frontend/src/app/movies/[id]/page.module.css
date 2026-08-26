@@ -164,19 +164,29 @@
 
 .cinemaHeader {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-sm);
+  align-items: center;
+  gap: var(--space-md);
   margin-bottom: var(--space-md);
+  flex-wrap: wrap;
 }
 
 .cinemaName {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .cinemaBranch {
-  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
   font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #d8b4fe;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  border-radius: var(--radius-full);
+  padding: 3px 12px;
+  letter-spacing: 0.01em;
 }
 
 .dateGroup {
