@@ -51,5 +51,32 @@ services:
     <<: *scraper-base
     command: sh -c "python movie_scraping/cinemas/main.py && python movie_scraping/movies_and_schedules/main.py && python movie_scraping/clean/main.py"
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: screenscout_backend
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/screenscout
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: screenscout_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
   postgres_data:
