@@ -72,6 +72,14 @@
   border-color: rgba(192, 132, 252, 0.3);
 }
 
+.navLinkActive {
+  color: #ffffff;
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(192, 132, 252, 0.55);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.3);
+  font-weight: 700;
+}
+
 .authGroup {
   display: flex;
   align-items: center;
@@ -137,6 +145,14 @@
   border-color: rgba(192, 132, 252, 0.6);
   box-shadow: 0 0 16px rgba(168, 85, 247, 0.35);
   transform: translateY(-1px);
+}
+
+.userBadgeActive {
+  background: rgba(168, 85, 247, 0.35);
+  border-color: rgba(192, 132, 252, 0.75);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.45);
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .logoutBtn {

@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import styles from "./Navbar.module.css";
 
 export default function Navbar() {
   const { user, isLoading, openAuthModal, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,6 +20,11 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const isMoviesActive = pathname === "/" || pathname.startsWith("/movies");
+  const isMonitoringsActive = pathname.startsWith("/monitorings");
+  const isAboutActive = pathname.startsWith("/about");
+  const isDashboardActive = pathname.startsWith("/dashboard");
+
   return (
     <header className={`${styles.header} ${isScrolled ? styles.headerScrolled : ""}`}>
       <div className={styles.headerInner}>
@@ -27,13 +34,22 @@ export default function Navbar() {
         </Link>
 
         <nav className={styles.navLinks}>
-          <Link href="/" className={styles.navLink}>
+          <Link
+            href="/"
+            className={`${styles.navLink} ${isMoviesActive ? styles.navLinkActive : ""}`}
+          >
             Movies
           </Link>
-          <Link href="/monitorings" className={styles.navLink}>
+          <Link
+            href="/monitorings"
+            className={`${styles.navLink} ${isMonitoringsActive ? styles.navLinkActive : ""}`}
+          >
             Monitorings
           </Link>
-          <Link href="/about" className={styles.navLink}>
+          <Link
+            href="/about"
+            className={`${styles.navLink} ${isAboutActive ? styles.navLinkActive : ""}`}
+          >
             About
           </Link>
 
@@ -44,7 +60,9 @@ export default function Navbar() {
                 <>
                   <Link
                     href="/dashboard"
-                    className={styles.userBadge}
+                    className={`${styles.userBadge} ${
+                      isDashboardActive ? styles.userBadgeActive : ""
+                    }`}
                     title="Open User Dashboard"
                   >
                     <span>👤</span>
