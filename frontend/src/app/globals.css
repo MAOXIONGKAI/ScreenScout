@@ -231,9 +231,9 @@ img {
 .hero-subtitle {
   font-size: var(--font-size-lg);
   color: var(--text-secondary);
-  max-width: 520px;
   margin: 0 auto var(--space-xl);
   line-height: 1.6;
+  white-space: nowrap;
 }
 
 /* ============================================
