@@ -12,15 +12,15 @@ from typing import List, Dict, Any, Optional
 import urllib.request
 import urllib.error
 
-# Ensure db connection utils
+# Ensure db connection utils and root path
 MONITOR_DIR = Path(__file__).resolve().parent
-ROOT_DIR = MONITOR_DIR.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+PROJECT_ROOT = MONITOR_DIR.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(ROOT_DIR / ".env")
+    load_dotenv(PROJECT_ROOT / ".env")
 except ImportError:
     pass
 
@@ -39,7 +39,7 @@ def get_db_connection():
 def send_telegram_alert(recipient: str, message: str) -> str:
     """
     Invokes the ScreenScout Notification Service to dispatch the real Telegram alert.
-    Falls back to direct Telegram client if notification service daemon is starting.
+    Falls back to direct Telegram client if notification service daemon is unavailable or restarting.
     """
     payload_data = {
         "recipient": recipient,
@@ -49,7 +49,7 @@ def send_telegram_alert(recipient: str, message: str) -> str:
     }
     json_bytes = json.dumps(payload_data).encode("utf-8")
 
-    # 1. Primary: Delegate to Notification Service
+    # 1. Primary: Try Notification Service
     try:
         req = urllib.request.Request(
             NOTIFICATION_SERVICE_URL,
@@ -63,29 +63,27 @@ def send_telegram_alert(recipient: str, message: str) -> str:
                 print(f"[Notification Service] Delivered alert to {recipient} (Status: {status})")
                 return status
             else:
-                print(f"[Notification Service Error] Could not deliver to {recipient}: {resp_body.get('error')}")
-                if resp_body.get("hint"):
-                    print(f"💡 Hint: {resp_body.get('hint')}")
-                return "FAILED"
-    except urllib.error.URLError:
-        # 2. Fallback: Notification Service offline -> Direct client
-        pass
+                print(f"[Notification Service Notice] Service returned: {resp_body.get('error')}. Falling back to direct Telegram client...")
     except Exception as e:
-        print(f"[Notification Service Invocation Warning] {e}")
+        # Fallback to direct client
+        pass
 
-    # Fallback to local TelegramClient
+    # 2. Resilient Direct Telegram Client Fallback
     try:
         from notification_service.telegram_client import TelegramClient
         client = TelegramClient()
         res = client.send_message(recipient, message)
         if res.get("success"):
-            return res.get("status", "SENT")
+            status = res.get("status", "SENT")
+            print(f"[Direct Telegram Client] Delivered alert to {recipient} (Status: {status})")
+            return status
         print(f"[Direct Telegram Alert Error] {res.get('error')}")
         if res.get("hint"):
             print(f"💡 Hint: {res.get('hint')}")
         return "FAILED"
     except Exception as e:
-        if not TELEGRAM_BOT_TOKEN:
+        token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+        if not token:
             print(f"\n[Telegram Simulation] Alert dispatched to {recipient}:\n{message}\n")
             return "SIMULATED"
         print(f"[Telegram Alert Error] Could not deliver to {recipient}: {e}")
@@ -198,16 +196,19 @@ def check_and_trigger_subscriptions() -> int:
                 continue
 
             # Format Telegram Alert Message
+            escaped_handle = sub['recipient'].replace('_', '\\_')
+            escaped_query = sub['movie_query'].replace('*', '').replace('_', '\\_')
             if len(matched_movies) == 1:
                 m = matched_movies[0]
                 status_label = "Now Showing" if m["status"] == "now_showing" else "Coming Soon"
                 provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
+                clean_title = m["title"].replace('*', '').strip()
 
                 msg = (
                     f"🎬 *ScreenScout Movie Alert!*\n\n"
-                    f"Hello {sub['recipient']},\n"
-                    f"Your tracked movie keyword *\"{sub['movie_query']}\"* is now available!\n\n"
-                    f"🎥 *{m['title']}*\n"
+                    f"Hello {escaped_handle},\n"
+                    f"Your tracked movie keyword *\"{escaped_query}\"* is now available!\n\n"
+                    f"🎥 *{clean_title}*\n"
                     f"📌 Status: {status_label}\n"
                     f"🏢 Cinema: {provider_label}\n"
                     f"📅 Release Date: {m['release_date']}\n\n"
@@ -217,14 +218,15 @@ def check_and_trigger_subscriptions() -> int:
             else:
                 msg_lines = [
                     f"🎬 *ScreenScout Movie Alert!*\n",
-                    f"Hello {sub['recipient']},",
-                    f"Your tracked movie keyword *\"{sub['movie_query']}\"* matched *{len(matched_movies)}* movies!\n",
+                    f"Hello {escaped_handle},",
+                    f"Your tracked movie keyword *\"{escaped_query}\"* matched *{len(matched_movies)}* movies!\n",
                 ]
                 for i, m in enumerate(matched_movies, 1):
                     status_label = "Now Showing" if m["status"] == "now_showing" else "Coming Soon"
                     provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
+                    clean_title = m["title"].replace('*', '').strip()
                     msg_lines.append(
-                        f"{i}. 🎥 *{m['title']}*\n"
+                        f"{i}. 🎥 *{clean_title}*\n"
                         f"   🏢 {provider_label} • 📌 {status_label}\n"
                         f"   📅 {m['release_date']} • 🔗 http://localhost:3000/movies/{m['id']}\n"
                     )
