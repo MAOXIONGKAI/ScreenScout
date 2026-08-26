@@ -1,18 +1,37 @@
+"use client";
+
+import React, { useEffect } from "react";
 import Link from "next/link";
 import styles from "./page.module.css";
 
-export const metadata = {
-  title: "About ScreenScout — Singapore Movie Intelligence & 24/7 Screening Alerts",
-  description:
-    "Learn how ScreenScout unifies Singapore cinema showtimes across Golden Village and Shaw Theatres, powers 24/7 screening tracking, and delivers real-time Telegram alerts.",
-};
-
 export default function AboutPage() {
+  // Smooth scroll reveal observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add(styles.revealed);
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px",
+      }
+    );
+
+    const elements = document.querySelectorAll(`.${styles.revealOnScroll}`);
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="container">
       <div className={styles.landingPage}>
         {/* Hero Section */}
-        <section className={styles.hero}>
+        <section className={`${styles.hero} ${styles.heroAnimated}`}>
           <div className={styles.heroTag}>
             <span>✨ Singapore Cinema Intelligence & 24/7 Screening Alerts</span>
           </div>
@@ -47,7 +66,7 @@ export default function AboutPage() {
           </div>
 
           {/* Stats Strip */}
-          <div className={styles.statsStrip}>
+          <div className={`${styles.statsStrip} ${styles.revealOnScroll}`}>
             <div className={styles.statItem}>
               <div className={styles.statValue}>24+</div>
               <div className={styles.statLabel}>Cinema Branches</div>
@@ -69,7 +88,7 @@ export default function AboutPage() {
 
         {/* Features Section */}
         <section id="features" className={styles.section}>
-          <div className={styles.sectionHeader}>
+          <div className={`${styles.sectionHeader} ${styles.revealOnScroll}`}>
             <p className={styles.sectionTag}>Features & Capabilities</p>
             <h2 className={styles.sectionTitle}>Engineered for Film Lovers</h2>
             <p className={styles.sectionSubtitle}>
@@ -79,7 +98,10 @@ export default function AboutPage() {
 
           <div className={styles.featuresGrid}>
             {/* Feature 1: Real-time Telegram Notifications */}
-            <div className={`${styles.featureCard} ${styles.featureCardHighlight}`}>
+            <div
+              className={`${styles.featureCard} ${styles.featureCardHighlight} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "0ms" }}
+            >
               <div className={styles.featureBadge}>NEW</div>
               <span className={styles.featureIcon}>🤖</span>
               <h3 className={styles.featureTitle}>24/7 Telegram Screening Alerts</h3>
@@ -89,7 +111,10 @@ export default function AboutPage() {
             </div>
 
             {/* Feature 2: 3-Tab Task Management */}
-            <div className={`${styles.featureCard} ${styles.featureCardHighlight}`}>
+            <div
+              className={`${styles.featureCard} ${styles.featureCardHighlight} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "80ms" }}
+            >
               <div className={styles.featureBadge}>NEW</div>
               <span className={styles.featureIcon}>🎯</span>
               <h3 className={styles.featureTitle}>3-Tab Monitoring Hub</h3>
@@ -99,7 +124,10 @@ export default function AboutPage() {
             </div>
 
             {/* Feature 3: Safety Net & Quota Engine */}
-            <div className={`${styles.featureCard} ${styles.featureCardHighlight}`}>
+            <div
+              className={`${styles.featureCard} ${styles.featureCardHighlight} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "160ms" }}
+            >
               <div className={styles.featureBadge}>NEW</div>
               <span className={styles.featureIcon}>🛡️</span>
               <h3 className={styles.featureTitle}>Safety Net & Active Task Limits</h3>
@@ -109,7 +137,10 @@ export default function AboutPage() {
             </div>
 
             {/* Feature 4: Multi-Provider Unification */}
-            <div className={styles.featureCard}>
+            <div
+              className={`${styles.featureCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "240ms" }}
+            >
               <span className={styles.featureIcon}>🍿</span>
               <h3 className={styles.featureTitle}>Multi-Provider Unification</h3>
               <p className={styles.featureDesc}>
@@ -118,7 +149,10 @@ export default function AboutPage() {
             </div>
 
             {/* Feature 5: Smart Time Window Filter */}
-            <div className={styles.featureCard}>
+            <div
+              className={`${styles.featureCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "320ms" }}
+            >
               <span className={styles.featureIcon}>⏱️</span>
               <h3 className={styles.featureTitle}>Smart Time Window Filter</h3>
               <p className={styles.featureDesc}>
@@ -127,7 +161,10 @@ export default function AboutPage() {
             </div>
 
             {/* Feature 6: Safe Deletion Dialogue */}
-            <div className={styles.featureCard}>
+            <div
+              className={`${styles.featureCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "400ms" }}
+            >
               <span className={styles.featureIcon}>🗑️</span>
               <h3 className={styles.featureTitle}>Safe History Deletion</h3>
               <p className={styles.featureDesc}>
@@ -136,7 +173,10 @@ export default function AboutPage() {
             </div>
 
             {/* Feature 7: Branch & Location Mapping */}
-            <div className={styles.featureCard}>
+            <div
+              className={`${styles.featureCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "480ms" }}
+            >
               <span className={styles.featureIcon}>📍</span>
               <h3 className={styles.featureTitle}>Branch & Location Mapping</h3>
               <p className={styles.featureDesc}>
@@ -145,7 +185,10 @@ export default function AboutPage() {
             </div>
 
             {/* Feature 8: Trailers & Full Metadata */}
-            <div className={styles.featureCard}>
+            <div
+              className={`${styles.featureCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "560ms" }}
+            >
               <span className={styles.featureIcon}>🎞️</span>
               <h3 className={styles.featureTitle}>Trailers & Full Metadata</h3>
               <p className={styles.featureDesc}>
@@ -154,7 +197,10 @@ export default function AboutPage() {
             </div>
 
             {/* Feature 9: Translucent Dark Theme */}
-            <div className={styles.featureCard}>
+            <div
+              className={`${styles.featureCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "640ms" }}
+            >
               <span className={styles.featureIcon}>🌌</span>
               <h3 className={styles.featureTitle}>Translucent Glass UI & Particles</h3>
               <p className={styles.featureDesc}>
@@ -166,7 +212,7 @@ export default function AboutPage() {
 
         {/* How It Works Section */}
         <section className={styles.section}>
-          <div className={styles.sectionHeader}>
+          <div className={`${styles.sectionHeader} ${styles.revealOnScroll}`}>
             <p className={styles.sectionTag}>Architecture & Workflow</p>
             <h2 className={styles.sectionTitle}>How ScreenScout Delivers Alerts</h2>
             <p className={styles.sectionSubtitle}>
@@ -175,7 +221,10 @@ export default function AboutPage() {
           </div>
 
           <div className={styles.pipelineGrid}>
-            <div className={styles.stepCard}>
+            <div
+              className={`${styles.stepCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "0ms" }}
+            >
               <span className={styles.stepNumber}>01</span>
               <div className={styles.stepIcon}>🤖</div>
               <h3 className={styles.stepTitle}>Continuous Scrapers</h3>
@@ -184,7 +233,10 @@ export default function AboutPage() {
               </p>
             </div>
 
-            <div className={styles.stepCard}>
+            <div
+              className={`${styles.stepCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "100ms" }}
+            >
               <span className={styles.stepNumber}>02</span>
               <div className={styles.stepIcon}>🗄️</div>
               <h3 className={styles.stepTitle}>Hertz Go Engine & Postgres</h3>
@@ -193,7 +245,10 @@ export default function AboutPage() {
               </p>
             </div>
 
-            <div className={styles.stepCard}>
+            <div
+              className={`${styles.stepCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "200ms" }}
+            >
               <span className={styles.stepNumber}>03</span>
               <div className={styles.stepIcon}>🎯</div>
               <h3 className={styles.stepTitle}>Automated Match Check</h3>
@@ -202,7 +257,10 @@ export default function AboutPage() {
               </p>
             </div>
 
-            <div className={styles.stepCard}>
+            <div
+              className={`${styles.stepCard} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "300ms" }}
+            >
               <span className={styles.stepNumber}>04</span>
               <div className={styles.stepIcon}>💬</div>
               <h3 className={styles.stepTitle}>Instant Telegram Dispatch</h3>
@@ -215,7 +273,7 @@ export default function AboutPage() {
 
         {/* Supported Cinema Chains */}
         <section className={styles.section}>
-          <div className={styles.sectionHeader}>
+          <div className={`${styles.sectionHeader} ${styles.revealOnScroll}`}>
             <p className={styles.sectionTag}>Cinemas</p>
             <h2 className={styles.sectionTitle}>Supported Cinema Chains</h2>
             <p className={styles.sectionSubtitle}>
@@ -224,7 +282,10 @@ export default function AboutPage() {
           </div>
 
           <div className={styles.cinemaGrid}>
-            <div className={`${styles.cinemaCard} ${styles.cinemaCardGv}`}>
+            <div
+              className={`${styles.cinemaCard} ${styles.cinemaCardGv} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "0ms" }}
+            >
               <span className={`${styles.cinemaBadge} ${styles.cinemaBadgeGv}`}>
                 Golden Village
               </span>
@@ -245,7 +306,10 @@ export default function AboutPage() {
               </div>
             </div>
 
-            <div className={`${styles.cinemaCard} ${styles.cinemaCardShaw}`}>
+            <div
+              className={`${styles.cinemaCard} ${styles.cinemaCardShaw} ${styles.revealOnScroll}`}
+              style={{ transitionDelay: "120ms" }}
+            >
               <span
                 className={`${styles.cinemaBadge} ${styles.cinemaBadgeShaw}`}
               >
@@ -271,7 +335,7 @@ export default function AboutPage() {
         </section>
 
         {/* CTA Banner */}
-        <section className={styles.ctaBanner}>
+        <section className={`${styles.ctaBanner} ${styles.revealOnScroll}`}>
           <h2 className={styles.ctaTitle}>Ready for Movie Night?</h2>
           <p className={styles.ctaSubtitle}>
             Browse now playing movies, set up automated screening alerts, and never miss opening night tickets again.

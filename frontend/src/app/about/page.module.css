@@ -9,6 +9,37 @@
   position: relative;
 }
 
+.heroAnimated {
+  animation: heroEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heroEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scroll Reveal Slow Transition System */
+.revealOnScroll {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color var(--transition-base),
+              box-shadow var(--transition-base);
+  will-change: opacity, transform;
+}
+
+.revealed {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
 .heroTag {
   display: inline-flex;
   align-items: center;
@@ -347,13 +378,13 @@
 }
 
 .cinemaCardGv:hover {
-  border-color: rgba(225, 29, 72, 0.5);
-  box-shadow: 0 0 30px rgba(225, 29, 72, 0.15);
+  border-color: rgba(234, 179, 8, 0.55);
+  box-shadow: 0 0 30px rgba(234, 179, 8, 0.2);
 }
 
 .cinemaCardShaw:hover {
-  border-color: rgba(124, 58, 237, 0.5);
-  box-shadow: 0 0 30px rgba(124, 58, 237, 0.15);
+  border-color: rgba(239, 68, 68, 0.55);
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
 }
 
 .cinemaBadge {
@@ -367,15 +398,15 @@
 }
 
 .cinemaBadgeGv {
-  color: #fb7185;
-  background: rgba(0, 0, 0, 0.75);
-  border: 1px solid #e11d48;
+  color: #facc15;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid #eab308;
 }
 
 .cinemaBadgeShaw {
-  color: #a78bfa;
-  background: rgba(0, 0, 0, 0.75);
-  border: 1px solid #7c3aed;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid #ef4444;
 }
 
 .cinemaCardTitle {

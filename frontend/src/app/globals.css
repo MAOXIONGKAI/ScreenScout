@@ -34,10 +34,10 @@
   --status-coming: #f59e0b;
   --status-coming-bg: rgba(245, 158, 11, 0.12);
 
-  --provider-gv: #e11d48;
-  --provider-gv-bg: rgba(225, 29, 72, 0.12);
-  --provider-shaw: #7c3aed;
-  --provider-shaw-bg: rgba(124, 58, 237, 0.12);
+  --provider-gv: #eab308;
+  --provider-gv-bg: rgba(234, 179, 8, 0.14);
+  --provider-shaw: #ef4444;
+  --provider-shaw-bg: rgba(239, 68, 68, 0.14);
 
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-card: rgba(255, 255, 255, 0.08);
@@ -702,34 +702,39 @@ main {
   align-items: center;
   padding: 3px 10px;
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 700;
   border-radius: var(--radius-full);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  backdrop-filter: blur(8px);
 }
 
 .badge-showing {
   color: #34d399;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(8, 18, 12, 0.88);
   border: 1px solid #10b981;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .badge-coming {
   color: #fbbf24;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(20, 15, 6, 0.88);
   border: 1px solid #f59e0b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .badge-gv {
-  color: #fb7185;
-  background: rgba(0, 0, 0, 0.75);
-  border: 1px solid #e11d48;
+  color: #facc15;
+  background: rgba(24, 19, 5, 0.88);
+  border: 1px solid #eab308;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .badge-shaw {
-  color: #a78bfa;
-  background: rgba(0, 0, 0, 0.75);
-  border: 1px solid #7c3aed;
+  color: #f87171;
+  background: rgba(26, 8, 8, 0.88);
+  border: 1px solid #ef4444;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* ============================================
