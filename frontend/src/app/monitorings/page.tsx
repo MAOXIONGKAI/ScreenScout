@@ -466,12 +466,12 @@ export default function MonitoringsPage() {
                   <div>
                     <strong>Start the Bot:</strong> Open{" "}
                     <a
-                      href="https://t.me/screenscoutBot"
+                      href="https://t.me/The_ScreenScout_Bot"
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.botLink}
                     >
-                      @screenscoutBot ↗
+                      @The_ScreenScout_Bot ↗
                     </a>{" "}
                     in Telegram and tap <strong>Start</strong> (<code className={styles.inlineCode}>/start</code>) so Telegram authorizes alerts.
                   </div>
@@ -485,7 +485,7 @@ export default function MonitoringsPage() {
                 <div className={styles.cardStepItem}>
                   <span className={styles.cardStepNum}>3</span>
                   <div>
-                    <strong>Receive Alerts:</strong> When your monitored movies are detected, <strong>@screenscoutBot</strong> will message you with direct showtime links!
+                    <strong>Receive Alerts:</strong> When your monitored movies are detected, <strong>@The_ScreenScout_Bot</strong> will message you with direct showtime links!
                   </div>
                 </div>
               </div>

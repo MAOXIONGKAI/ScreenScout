@@ -37,12 +37,12 @@ export default function AboutPage() {
               🔔 24/7 Movie Monitorings
             </Link>
             <a
-              href="https://t.me/screenscoutBot"
+              href="https://t.me/The_ScreenScout_Bot"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.telegramBtn}
             >
-              <span>💬 @screenscoutBot ↗</span>
+              <span>💬 @The_ScreenScout_Bot ↗</span>
             </a>
           </div>
 
@@ -84,7 +84,7 @@ export default function AboutPage() {
               <span className={styles.featureIcon}>🤖</span>
               <h3 className={styles.featureTitle}>24/7 Telegram Screening Alerts</h3>
               <p className={styles.featureDesc}>
-                Connect directly to our official bot (<strong>@screenscoutBot</strong>). ScreenScout monitors cinema schedule releases in the background and sends you instant alerts with cinema names, dates, and direct booking links.
+                Connect directly to our official bot (<strong>@The_ScreenScout_Bot</strong>). ScreenScout monitors cinema schedule releases in the background and sends you instant alerts with cinema names, dates, and direct booking links.
               </p>
             </div>
 
@@ -207,7 +207,7 @@ export default function AboutPage() {
               <div className={styles.stepIcon}>💬</div>
               <h3 className={styles.stepTitle}>Instant Telegram Dispatch</h3>
               <p className={styles.stepDesc}>
-                The moment a match is detected, <strong>@screenscoutBot</strong> dispatches formatted alerts directly to your Telegram chat with direct showtime links.
+                The moment a match is detected, <strong>@The_ScreenScout_Bot</strong> dispatches formatted alerts directly to your Telegram chat with direct showtime links.
               </p>
             </div>
           </div>
