@@ -67,6 +67,8 @@ services:
       PORT: 8085
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       NOTIFICATION_STREAM_NAME: screenscout:notifications:stream
+    volumes:
+      - .:/app
     depends_on:
       postgres:
         condition: service_healthy
