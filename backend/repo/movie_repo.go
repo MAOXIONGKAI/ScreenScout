@@ -7,17 +7,45 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/maoxiongkai/screenscout-backend/cache"
 	"github.com/maoxiongkai/screenscout-backend/model"
 )
 
-// MovieRepo provides database access for movie data.
+// MovieRepo provides database access for movie data with optional Redis caching.
 type MovieRepo struct {
-	Pool *pgxpool.Pool
+	Pool  *pgxpool.Pool
+	Cache *cache.MovieCache
 }
 
 // NewMovieRepo creates a new MovieRepo.
 func NewMovieRepo(pool *pgxpool.Pool) *MovieRepo {
 	return &MovieRepo{Pool: pool}
+}
+
+// SetCache attaches a MovieCache to the repository.
+func (r *MovieRepo) SetCache(c *cache.MovieCache) {
+	r.Cache = c
+}
+
+// GetCache returns the attached MovieCache (if any).
+func (r *MovieRepo) GetCache() *cache.MovieCache {
+	return r.Cache
+}
+
+// InvalidateMovie purges cache entries for a specific movie and associated listings.
+func (r *MovieRepo) InvalidateMovie(ctx context.Context, id int64) error {
+	if r.Cache != nil {
+		return r.Cache.InvalidateMovie(ctx, id)
+	}
+	return nil
+}
+
+// InvalidateAllMovies purges all movie caches (details and listing queries).
+func (r *MovieRepo) InvalidateAllMovies(ctx context.Context) (int64, error) {
+	if r.Cache != nil {
+		return r.Cache.InvalidateAllMovies(ctx)
+	}
+	return 0, nil
 }
 
 // MovieFilters defines optional query filters.
@@ -33,6 +61,7 @@ type MovieFilters struct {
 }
 
 // ListMovies returns movies matching the given filters with pagination.
+// It checks the Redis cache first, falling back to PostgreSQL on cache miss.
 func (r *MovieRepo) ListMovies(ctx context.Context, f MovieFilters) ([]model.Movie, int, error) {
 	if f.Page < 1 {
 		f.Page = 1
@@ -41,8 +70,26 @@ func (r *MovieRepo) ListMovies(ctx context.Context, f MovieFilters) ([]model.Mov
 		f.Limit = 20
 	}
 
+	cacheFilters := cache.MovieListFilters{
+		Provider: f.Provider,
+		Branch:   f.Branch,
+		Status:   f.Status,
+		Search:   f.Search,
+		TimeFrom: f.TimeFrom,
+		TimeTo:   f.TimeTo,
+		Page:     f.Page,
+		Limit:    f.Limit,
+	}
+
+	if r.Cache != nil {
+		if cachedMovies, cachedTotal, found, err := r.Cache.GetMovieList(ctx, cacheFilters); found && err == nil {
+			return cachedMovies, cachedTotal, nil
+		}
+	}
+
 	// Build a CTE that tags each movie with has_schedule (boolean)
 	// A movie "now_showing" = has at least one future schedule
+	// A movie "coming_soon" = release_date > CURRENT_DATE and no future schedules
 	// A movie "coming_soon" = release_date > CURRENT_DATE and no future schedules
 	baseQuery := `
 WITH movie_status AS (
@@ -181,11 +228,22 @@ LIMIT $%d OFFSET $%d`, baseQuery, whereClause, argIdx, argIdx+1)
 		movies = append(movies, m)
 	}
 
+	if r.Cache != nil {
+		_ = r.Cache.SetMovieList(ctx, cacheFilters, movies, total)
+	}
+
 	return movies, total, nil
 }
 
 // GetMovieByID returns a single movie with its grouped schedules.
+// It checks the Redis cache first, falling back to PostgreSQL on cache miss.
 func (r *MovieRepo) GetMovieByID(ctx context.Context, id int64) (*model.MovieDetail, error) {
+	if r.Cache != nil {
+		if cachedDetail, found, err := r.Cache.GetMovieDetail(ctx, id); found && err == nil {
+			return cachedDetail, nil
+		}
+	}
+
 	// Fetch the movie
 	movieQuery := `
 SELECT m.id, m.title, m.secondary_title, m.description,
@@ -298,8 +356,14 @@ ORDER BY c.name, c.branch, s.start_date, s.start_time`
 		schedules = append(schedules, *cs)
 	}
 
-	return &model.MovieDetail{
+	detail := &model.MovieDetail{
 		Movie:     m,
 		Schedules: schedules,
-	}, nil
+	}
+
+	if r.Cache != nil {
+		_ = r.Cache.SetMovieDetail(ctx, id, detail)
+	}
+
+	return detail, nil
 }

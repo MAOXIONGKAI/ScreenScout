@@ -1,4 +1,4 @@
-.PHONY: help setup db-up db-down db-logs db-psql scrape-cinemas scrape-movies scrape-gv scrape-shaw clean-db run-all docker-scrape-cinemas docker-scrape-movies docker-scrape-gv docker-scrape-shaw docker-clean-db docker-run-all backend frontend dev
+.PHONY: help setup db-up db-down db-logs db-psql redis-up redis-down redis-logs redis-cli scrape-cinemas scrape-movies scrape-gv scrape-shaw clean-db run-all docker-scrape-cinemas docker-scrape-movies docker-scrape-gv docker-scrape-shaw docker-clean-db docker-run-all backend frontend dev test-backend test-python test-frontend test
 
 PYTHON := $(shell if [ -f venv/bin/python ]; then echo "venv/bin/python"; else echo "python3"; fi)
 
@@ -19,10 +19,10 @@ setup: ## Set up Python virtualenv and install dependencies
 	./venv/bin/pip install -r requirements.txt
 	./venv/bin/playwright install chromium
 
-db-up: ## Start PostgreSQL database container in background
-	docker compose up -d postgres
+db-up: ## Start PostgreSQL and Redis containers in background
+	docker compose up -d postgres redis
 
-db-down: ## Stop PostgreSQL database container
+db-down: ## Stop PostgreSQL and Redis database containers
 	docker compose down
 
 db-logs: ## View PostgreSQL database container logs
@@ -30,6 +30,18 @@ db-logs: ## View PostgreSQL database container logs
 
 db-psql: ## Open interactive psql shell inside database container
 	docker compose exec postgres psql -U postgres -d screenscout
+
+redis-up: ## Start Redis container in background
+	docker compose up -d redis
+
+redis-down: ## Stop Redis container
+	docker compose stop redis
+
+redis-logs: ## View Redis container logs
+	docker compose logs -f redis
+
+redis-cli: ## Open interactive redis-cli inside Redis container
+	docker compose exec redis redis-cli
 
 scrape-cinemas: ## Scrape and store cinema locations (Golden Village & Shaw)
 	$(PYTHON) movie_scraping/cinemas/main.py
@@ -52,7 +64,7 @@ clean-db: ## Clean expired schedules and outdated movies from database
 check-subscriptions: ## Match active subscriptions against movies in DB and trigger Telegram alerts
 	$(PYTHON) movie_scraping/monitor/subscription_checker.py
 
-run-all: db-up ## Run full pipeline locally: start DB, scrape cinemas, scrape movies/schedules, clean DB, check subscriptions
+run-all: db-up ## Run full pipeline locally: start DB/Redis, scrape cinemas, scrape movies/schedules, clean DB, check subscriptions
 	$(PYTHON) movie_scraping/cinemas/main.py
 	$(PYTHON) movie_scraping/movies_and_schedules/main.py
 	$(PYTHON) movie_scraping/clean/main.py
@@ -85,7 +97,7 @@ backend: ## Start Hertz Go backend API server on :8080
 frontend: ## Start Next.js frontend dev server on :3000
 	cd frontend && npm run dev
 
-dev: db-up ## Start database, notification-service, backend, and frontend (all local)
+dev: db-up ## Start database, Redis, notification-service, backend, and frontend (all local)
 	@echo "Starting notification service, backend and frontend..."
 	@$(PYTHON) notification_service/main.py &
 	@cd backend && go run main.go &
@@ -104,5 +116,3 @@ test-frontend: ## Run frontend typecheck, tests, and production build
 	cd frontend && npm run build
 
 test: test-backend test-python test-frontend ## Run full automated test suite across Go, Python, and Frontend
-
-

@@ -10,6 +10,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/hertz-contrib/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/maoxiongkai/screenscout-backend/cache"
 	"github.com/maoxiongkai/screenscout-backend/handler"
 	"github.com/maoxiongkai/screenscout-backend/middleware"
 	"github.com/maoxiongkai/screenscout-backend/repo"
@@ -45,8 +46,28 @@ func main() {
 	}
 	fmt.Println("✓ Connected to PostgreSQL database")
 
+	// Redis Cache Setup
+	redisURL := os.Getenv("REDIS_URL")
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisURL == "" && redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
+	listTTL := parseDurationEnv("CACHE_MOVIE_LIST_TTL", 5*time.Minute)
+	detailTTL := parseDurationEnv("CACHE_MOVIE_DETAIL_TTL", 10*time.Minute)
+
+	redisClient := cache.NewClient(cache.Config{
+		URL:     redisURL,
+		Address: redisAddr,
+	})
+	defer redisClient.Close()
+
+	movieCache := cache.NewMovieCache(redisClient, listTTL, detailTTL)
+
 	// Initialize repositories
 	movieRepo := repo.NewMovieRepo(pool)
+	movieRepo.SetCache(movieCache)
+
 	cinemaRepo := repo.NewCinemaRepo(pool)
 	userRepo := repo.NewUserRepo(pool)
 	subRepo := repo.NewSubscriptionRepo(pool)
@@ -79,7 +100,7 @@ func main() {
 		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "X-Cache"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
@@ -90,6 +111,13 @@ func main() {
 		// Movie routes
 		api.GET("/movies", movieHandler.ListMovies)
 		api.GET("/movies/:id", movieHandler.GetMovie)
+
+		// Cache routes
+		cacheGroup := api.Group("/cache")
+		{
+			cacheGroup.GET("/stats", movieHandler.GetCacheStats)
+			cacheGroup.POST("/movies/invalidate", movieHandler.InvalidateCache)
+		}
 
 		// Cinema routes
 		api.GET("/cinemas", cinemaHandler.ListCinemas)
@@ -123,4 +151,17 @@ func main() {
 
 	fmt.Println("🚀 ScreenScout API server starting on :8080")
 	h.Spin()
+}
+
+func parseDurationEnv(key string, defaultVal time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return defaultVal
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		log.Printf("⚠️ Invalid duration for %s=%q: %v. Using default %v", key, v, err, defaultVal)
+		return defaultVal
+	}
+	return d
 }

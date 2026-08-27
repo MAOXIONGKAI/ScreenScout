@@ -147,6 +147,17 @@ async def main():
         except Exception as e:
             print(f"Schedules database : write skipped or failed ({e})")
 
+    # Invalidate Redis Movie Cache in Backend if active
+    try:
+        import urllib.request
+        api_url = os.getenv("BACKEND_API_URL", "http://localhost:8080")
+        req = urllib.request.Request(f"{api_url}/api/cache/movies/invalidate", method="POST", data=b"")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            if resp.status == 200:
+                print("Cache Invalidation  : Redis movie cache invalidated successfully.")
+    except Exception:
+        pass
+
     print("=" * 50 + "\n")
 
     # Monitor & Trigger Subscriptions
