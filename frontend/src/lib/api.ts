@@ -226,9 +226,16 @@ export async function toggleSubscription(
 
 // Movie Reviews API
 export async function fetchMovieReviews(
-  movieId: number
+  movieId: number,
+  page: number = 1,
+  limit: number = 5
 ): Promise<MovieReviewsResponse> {
-  const res = await fetch(`${API_BASE}/api/movies/${movieId}/reviews`);
+  const params = new URLSearchParams();
+  if (page) params.append("page", page.toString());
+  if (limit) params.append("limit", limit.toString());
+
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const res = await fetch(`${API_BASE}/api/movies/${movieId}/reviews${query}`);
   if (!res.ok) {
     throw new Error("Failed to fetch movie reviews");
   }

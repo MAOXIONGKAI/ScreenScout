@@ -18,6 +18,8 @@ const RATING_MEANINGS: Record<number, string> = {
   5: "Masterpiece! 🤩",
 };
 
+const ITEMS_PER_PAGE = 5;
+
 function formatReviewDate(dateStr: string): string {
   try {
     const d = new Date(dateStr);
@@ -42,17 +44,47 @@ function formatReviewDate(dateStr: string): string {
   }
 }
 
+function getPageNumbers(currentPage: number, totalPages: number): (number | string)[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const pages: (number | string)[] = [1];
+
+  if (currentPage > 3) {
+    pages.push("...");
+  }
+
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  if (currentPage < totalPages - 2) {
+    pages.push("...");
+  }
+
+  pages.push(totalPages);
+  return pages;
+}
+
 export function ReviewSection({ movieId }: ReviewSectionProps) {
   const { user, token, openAuthModal } = useAuth();
 
   const [reviewsData, setReviewsData] = useState<MovieReviewsResponse>({
     reviews: [],
     total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    total_pages: 0,
     average_rating: 0,
     rating_counts: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
   });
   const [loading, setLoading] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [page, setPage] = useState(1);
 
   // Form State
   const [rating, setRating] = useState<number>(5);
@@ -61,23 +93,28 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Load reviews on mount or movieId change
-  const loadReviews = useCallback(async () => {
+  // Reset to page 1 on movieId change
+  useEffect(() => {
+    setPage(1);
+  }, [movieId]);
+
+  // Load reviews for current page
+  const loadReviews = useCallback(async (pageToLoad: number = page) => {
     if (!movieId) return;
     try {
       setLoading(true);
-      const data = await fetchMovieReviews(movieId);
+      const data = await fetchMovieReviews(movieId, pageToLoad, ITEMS_PER_PAGE);
       setReviewsData(data);
     } catch (err: any) {
       console.error("Failed to load reviews:", err);
     } finally {
       setLoading(false);
     }
-  }, [movieId]);
+  }, [movieId, page]);
 
   useEffect(() => {
-    loadReviews();
-  }, [loadReviews]);
+    loadReviews(page);
+  }, [loadReviews, page]);
 
   // Check if current user has already written a review
   const userReview = useMemo(() => {
@@ -85,18 +122,24 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
     return reviewsData.reviews.find((r) => r.user_id === user.id) || null;
   }, [user, reviewsData.reviews]);
 
-  // Populate form if user has an existing review
+  // Populate form if user has an existing review on current view
   useEffect(() => {
     if (userReview) {
       setRating(userReview.rating);
       setContent(userReview.content);
-    } else {
+    } else if (!submitting && !content) {
       setRating(5);
-      setContent("");
     }
   }, [userReview]);
 
   const activeRating = hoverRating !== null ? hoverRating : rating;
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || (reviewsData.total_pages && newPage > reviewsData.total_pages)) {
+      return;
+    }
+    setPage(newPage);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,8 +165,8 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
         rating,
         content: content.trim(),
       });
-      // Refresh reviews list
-      await loadReviews();
+      // Refresh current page
+      await loadReviews(page);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to submit review. Please try again.");
     } finally {
@@ -142,7 +185,7 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
       await deleteMovieReview(token, movieId, reviewId);
       setContent("");
       setRating(5);
-      await loadReviews();
+      await loadReviews(page);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to delete review.");
     } finally {
@@ -152,6 +195,8 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
 
   const totalReviews = reviewsData.total;
   const avgRating = reviewsData.average_rating;
+  const totalPages = reviewsData.total_pages || (totalReviews > 0 ? Math.ceil(totalReviews / ITEMS_PER_PAGE) : 0);
+  const pageNumbers = useMemo(() => getPageNumbers(page, totalPages), [page, totalPages]);
 
   return (
     <section
@@ -355,52 +400,113 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
 
           {/* Reviews Feed */}
           {reviewsData.reviews.length > 0 ? (
-            <div className={styles.reviewList}>
-              {reviewsData.reviews.map((rev) => {
-                const isOwnReview = user && user.id === rev.user_id;
-                const initial = rev.username ? rev.username.charAt(0).toUpperCase() : "?";
+            <>
+              <div className={styles.reviewList}>
+                {reviewsData.reviews.map((rev) => {
+                  const isOwnReview = user && user.id === rev.user_id;
+                  const initial = rev.username ? rev.username.charAt(0).toUpperCase() : "?";
 
-                return (
-                  <div key={rev.id} className={styles.reviewCard}>
-                    <div className={styles.reviewCardHeader}>
-                      <div className={styles.authorInfo}>
-                        <div className={styles.avatar}>{initial}</div>
-                        <div className={styles.authorMeta}>
-                          <span className={styles.authorName}>
-                            {rev.username}
-                            {isOwnReview && (
-                              <span className={styles.youBadge}>You</span>
-                            )}
-                          </span>
-                          <span className={styles.reviewDate}>
-                            {formatReviewDate(rev.created_at)}
-                          </span>
+                  return (
+                    <div key={rev.id} className={styles.reviewCard}>
+                      <div className={styles.reviewCardHeader}>
+                        <div className={styles.authorInfo}>
+                          <div className={styles.avatar}>{initial}</div>
+                          <div className={styles.authorMeta}>
+                            <span className={styles.authorName}>
+                              {rev.username}
+                              {isOwnReview && (
+                                <span className={styles.youBadge}>You</span>
+                              )}
+                            </span>
+                            <span className={styles.reviewDate}>
+                              {formatReviewDate(rev.created_at)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className={styles.reviewHeaderRight}>
+                          <div className={styles.starsPill}>
+                            <span>★</span>
+                            <span>{rev.rating}.0</span>
+                          </div>
+                          {isOwnReview && (
+                            <button
+                              type="button"
+                              className={styles.deleteBtn}
+                              onClick={() => handleDelete(rev.id)}
+                              title="Delete your review"
+                            >
+                              🗑️
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      <div className={styles.reviewHeaderRight}>
-                        <div className={styles.starsPill}>
-                          <span>★</span>
-                          <span>{rev.rating}.0</span>
-                        </div>
-                        {isOwnReview && (
+                      <p className={styles.reviewContent}>{rev.content}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className={styles.paginationRow}>
+                  <div className={styles.paginationInfo}>
+                    Showing <strong>{(page - 1) * ITEMS_PER_PAGE + 1}</strong> –{" "}
+                    <strong>{Math.min(page * ITEMS_PER_PAGE, totalReviews)}</strong> of{" "}
+                    <strong>{totalReviews}</strong> reviews
+                  </div>
+
+                  <div className={styles.paginationControls}>
+                    <button
+                      type="button"
+                      className={styles.pageArrowBtn}
+                      onClick={() => handlePageChange(page - 1)}
+                      disabled={page <= 1}
+                      aria-label="Previous Page"
+                    >
+                      ← Previous
+                    </button>
+
+                    <div className={styles.pageNumbers}>
+                      {pageNumbers.map((p, idx) => {
+                        if (p === "...") {
+                          return (
+                            <span key={`ellipsis-${idx}`} className={styles.pageEllipsis}>
+                              …
+                            </span>
+                          );
+                        }
+                        const pageNum = Number(p);
+                        const isActive = pageNum === page;
+                        return (
                           <button
+                            key={pageNum}
                             type="button"
-                            className={styles.deleteBtn}
-                            onClick={() => handleDelete(rev.id)}
-                            title="Delete your review"
+                            className={`${styles.pageNumberBtn} ${
+                              isActive ? styles.pageNumberBtnActive : ""
+                            }`}
+                            onClick={() => handlePageChange(pageNum)}
                           >
-                            🗑️
+                            {pageNum}
                           </button>
-                        )}
-                      </div>
+                        );
+                      })}
                     </div>
 
-                    <p className={styles.reviewContent}>{rev.content}</p>
+                    <button
+                      type="button"
+                      className={styles.pageArrowBtn}
+                      onClick={() => handlePageChange(page + 1)}
+                      disabled={page >= totalPages}
+                      aria-label="Next Page"
+                    >
+                      Next →
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              )}
+            </>
           ) : (
             !loading && (
               <div className={styles.emptyReviews}>

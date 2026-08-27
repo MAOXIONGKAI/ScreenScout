@@ -55,23 +55,31 @@ func (r *ReviewRepo) EnsureReviewTable(ctx context.Context) error {
 	return nil
 }
 
-// ListReviewsByMovieID returns all reviews for a movie along with summary metrics (average rating and counts).
-func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64) ([]model.Review, int, float64, map[string]int, error) {
-	query := `
-	SELECT r.id, r.movie_id, r.user_id, u.username, r.rating, r.content, r.created_at, r.updated_at
-	FROM reviews r
-	JOIN users u ON u.id = r.user_id
-	WHERE r.movie_id = $1
-	ORDER BY r.created_at DESC
-	`
+// ListReviewsByMovieID returns paginated reviews for a movie along with summary metrics (average rating, counts, total pages).
+func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64, page, limit int) ([]model.Review, int, int, float64, map[string]int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 5
+	}
+	if limit > 50 {
+		limit = 50
+	}
 
-	rows, err := r.Pool.Query(ctx, query, movieID)
+	// 1. Fetch aggregate metrics across ALL reviews for this movie
+	aggQuery := `
+	SELECT rating, COUNT(*)
+	FROM reviews
+	WHERE movie_id = $1
+	GROUP BY rating
+	`
+	rows, err := r.Pool.Query(ctx, aggQuery, movieID)
 	if err != nil {
-		return nil, 0, 0, nil, fmt.Errorf("query movie reviews: %w", err)
+		return nil, 0, 0, 0, nil, fmt.Errorf("query review stats: %w", err)
 	}
 	defer rows.Close()
 
-	var reviews []model.Review
 	ratingCounts := map[string]int{
 		"1": 0,
 		"2": 0,
@@ -79,11 +87,51 @@ func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64) ([
 		"4": 0,
 		"5": 0,
 	}
+	var total int
 	var totalRatingSum int
 
 	for rows.Next() {
+		var starRating, count int
+		if err := rows.Scan(&starRating, &count); err != nil {
+			return nil, 0, 0, 0, nil, fmt.Errorf("scan review stats: %w", err)
+		}
+		key := fmt.Sprintf("%d", starRating)
+		ratingCounts[key] = count
+		total += count
+		totalRatingSum += starRating * count
+	}
+
+	var avgRating float64
+	if total > 0 {
+		avgRating = math.Round((float64(totalRatingSum)/float64(total))*10) / 10
+	}
+
+	totalPages := 0
+	if total > 0 {
+		totalPages = int(math.Ceil(float64(total) / float64(limit)))
+	}
+
+	// 2. Fetch paginated review items
+	offset := (page - 1) * limit
+	query := `
+	SELECT r.id, r.movie_id, r.user_id, u.username, r.rating, r.content, r.created_at, r.updated_at
+	FROM reviews r
+	JOIN users u ON u.id = r.user_id
+	WHERE r.movie_id = $1
+	ORDER BY r.created_at DESC
+	LIMIT $2 OFFSET $3
+	`
+
+	pRows, err := r.Pool.Query(ctx, query, movieID, limit, offset)
+	if err != nil {
+		return nil, 0, 0, 0, nil, fmt.Errorf("query paginated reviews: %w", err)
+	}
+	defer pRows.Close()
+
+	var reviews []model.Review
+	for pRows.Next() {
 		var rev model.Review
-		if err := rows.Scan(
+		if err := pRows.Scan(
 			&rev.ID,
 			&rev.MovieID,
 			&rev.UserID,
@@ -93,27 +141,16 @@ func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64) ([
 			&rev.CreatedAt,
 			&rev.UpdatedAt,
 		); err != nil {
-			return nil, 0, 0, nil, fmt.Errorf("scan review: %w", err)
+			return nil, 0, 0, 0, nil, fmt.Errorf("scan review item: %w", err)
 		}
-
 		reviews = append(reviews, rev)
-		totalRatingSum += rev.Rating
-
-		key := fmt.Sprintf("%d", rev.Rating)
-		ratingCounts[key]++
-	}
-
-	total := len(reviews)
-	var avgRating float64
-	if total > 0 {
-		avgRating = math.Round((float64(totalRatingSum)/float64(total))*10) / 10
 	}
 
 	if reviews == nil {
 		reviews = []model.Review{}
 	}
 
-	return reviews, total, avgRating, ratingCounts, nil
+	return reviews, total, totalPages, avgRating, ratingCounts, nil
 }
 
 // CreateOrUpdateReview inserts or updates a user's review for a given movie.

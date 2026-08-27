@@ -137,10 +137,13 @@ export interface CreateReviewPayload {
   content: string;
 }
 
-// MovieReviewsResponse wraps reviews list and aggregate metrics
+// MovieReviewsResponse wraps paginated reviews list and aggregate metrics
 export interface MovieReviewsResponse {
   reviews: Review[];
   total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
   average_rating: number;
   rating_counts: Record<string, number>;
 }

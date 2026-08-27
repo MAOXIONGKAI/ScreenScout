@@ -20,10 +20,13 @@ type CreateReviewRequest struct {
 	Content string `json:"content"`
 }
 
-// MovieReviewsResponse wraps the list of reviews, aggregate stats, and rating distribution for a movie.
+// MovieReviewsResponse wraps the paginated list of reviews, aggregate stats, and rating distribution for a movie.
 type MovieReviewsResponse struct {
 	Reviews       []Review       `json:"reviews"`
 	Total         int            `json:"total"`
+	Page          int            `json:"page"`
+	Limit         int            `json:"limit"`
+	TotalPages    int            `json:"total_pages"`
 	AverageRating float64        `json:"average_rating"`
 	RatingCounts  map[string]int `json:"rating_counts"`
 }
