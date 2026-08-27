@@ -37,7 +37,21 @@ EOF
     echo "✓ Generated secure production configuration in .env (Domain: www.screenscout.live)"
 fi
 
-# 3. Build and launch production Docker containers
+# 3. Free up host port 80/443 if host nginx/apache is running
+if command -v systemctl &> /dev/null; then
+    if systemctl is-active --quiet nginx; then
+        echo "🛑 Host Nginx service is running on port 80. Stopping host Nginx to let Docker container bind port 80..."
+        sudo systemctl stop nginx || true
+        sudo systemctl disable nginx || true
+    fi
+    if systemctl is-active --quiet apache2; then
+        echo "🛑 Host Apache service is running on port 80. Stopping host Apache..."
+        sudo systemctl stop apache2 || true
+        sudo systemctl disable apache2 || true
+    fi
+fi
+
+# 4. Build and launch production Docker containers
 echo "🏗️ Building and starting ScreenScout containers..."
 docker compose -f docker-compose.prod.yml up -d --build
 
