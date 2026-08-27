@@ -64,6 +64,12 @@ clean-db: ## Clean expired schedules and outdated movies from database
 check-subscriptions: ## Match active subscriptions against movies in DB and trigger Telegram alerts
 	$(PYTHON) movie_scraping/monitor/subscription_checker.py
 
+seed-demo: ## Populate authentic users and reviews for unreviewed movies (incremental)
+	$(PYTHON) scripts/seed_demo_data.py
+
+seed-demo-reset: ## Force wipe and re-seed all reviews from scratch
+	$(PYTHON) scripts/seed_demo_data.py --reset
+
 run-all: db-up ## Run full pipeline locally: start DB/Redis, scrape cinemas, scrape movies/schedules, clean DB, check subscriptions
 	$(PYTHON) movie_scraping/cinemas/main.py
 	$(PYTHON) movie_scraping/movies_and_schedules/main.py
