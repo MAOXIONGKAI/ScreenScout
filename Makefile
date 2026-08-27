@@ -124,3 +124,16 @@ test-frontend: ## Run frontend typecheck, tests, and production build
 	cd frontend && npm run build
 
 test: test-backend test-python test-frontend ## Run full automated test suite across Go, Python, and Frontend
+
+prod-up: ## Start all production containers (Postgres, Redis, Go Backend, Python Notif, Next.js Frontend, Nginx)
+	docker compose -f docker-compose.prod.yml up -d --build
+
+prod-down: ## Stop all production containers
+	docker compose -f docker-compose.prod.yml down
+
+prod-logs: ## Tail logs across all production containers
+	docker compose -f docker-compose.prod.yml logs -f
+
+deploy: ## Run turnkey production deployment script
+	./deploy.sh
+
