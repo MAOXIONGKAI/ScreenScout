@@ -151,6 +151,7 @@ func main() {
 		adminGroup := api.Group("/admin", middleware.AuthRequired(), middleware.AdminRequired())
 		{
 			adminGroup.GET("/stats", adminHandler.GetAdminStats)
+			adminGroup.POST("/scrape", adminHandler.TriggerScrape)
 		}
 
 		// User notification settings

@@ -4,7 +4,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { fetchAdminStats, invalidateAllMovieCache, triggerSubscriptionCheck } from "@/lib/api";
+import {
+  fetchAdminStats,
+  invalidateAllMovieCache,
+  triggerSubscriptionCheck,
+} from "@/lib/api";
 import { AdminStatsResponse } from "@/lib/types";
 import styles from "./page.module.css";
 
@@ -175,6 +179,14 @@ export default function AdminDashboardPage() {
               <span>🇸🇬 SGT</span>
               <span>{currentTime || "15:00:00"}</span>
             </div>
+            <Link
+              href="/dashboard"
+              className={styles.userDashboardBtn}
+              title="Switch to User Dashboard & profile"
+            >
+              <span>👤</span>
+              <span>User Dashboard</span>
+            </Link>
             <button
               className={styles.refreshBtn}
               onClick={loadStats}
@@ -214,6 +226,7 @@ export default function AdminDashboardPage() {
               className={`${styles.opBtn} ${styles.purgeCacheBtn}`}
               onClick={handlePurgeCache}
               disabled={isActionRunning}
+              title="Flush all cached movie entries in Redis"
             >
               <span>🗑️</span>
               <span>Purge Redis Movie Cache</span>
@@ -222,6 +235,7 @@ export default function AdminDashboardPage() {
               className={`${styles.opBtn} ${styles.checkSubBtn}`}
               onClick={handleRunSubCheck}
               disabled={isActionRunning}
+              title="Evaluate active movie subscriptions against available schedules"
             >
               <span>🔔</span>
               <span>Run Schedule Match Pass</span>

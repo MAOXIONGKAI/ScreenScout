@@ -71,11 +71,11 @@ export default function Navbar() {
               {user ? (
                 <>
                   <Link
-                    href={isAdmin ? "/admin" : "/dashboard"}
+                    href="/dashboard"
                     className={`${isAdmin ? styles.adminBadge : styles.userBadge} ${
-                      isAdmin ? (isAdminActive ? styles.adminBadgeActive : "") : (isDashboardActive ? styles.userBadgeActive : "")
+                      isDashboardActive ? (isAdmin ? styles.adminBadgeActive : styles.userBadgeActive) : ""
                     }`}
-                    title={isAdmin ? "Open Admin Console" : "Open User Dashboard"}
+                    title="Open User Dashboard"
                   >
                     <span>{isAdmin ? "👑" : "👤"}</span>
                     <span>{user.username}</span>
