@@ -100,6 +100,8 @@ func main() {
 	authHandler := handler.NewAuthHandler(userRepo)
 	subHandler := handler.NewSubscriptionHandler(subRepo, userRepo, tgService)
 	reviewHandler := handler.NewReviewHandler(reviewRepo, movieRepo)
+	adminRepo := repo.NewAdminRepo(pool, movieCache)
+	adminHandler := handler.NewAdminHandler(adminRepo)
 
 	// Create Hertz server
 	h := server.Default(server.WithHostPorts(":8080"))
@@ -143,6 +145,12 @@ func main() {
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
 			auth.GET("/me", middleware.AuthRequired(), authHandler.Me)
+		}
+
+		// Admin routes (Restricted to admin role)
+		adminGroup := api.Group("/admin", middleware.AuthRequired(), middleware.AdminRequired())
+		{
+			adminGroup.GET("/stats", adminHandler.GetAdminStats)
 		}
 
 		// User notification settings

@@ -2,11 +2,17 @@ package model
 
 import "time"
 
+const (
+	RoleUser  = "user"
+	RoleAdmin = "admin"
+)
+
 // User represents the user account entity.
 type User struct {
 	ID             int64     `json:"id"`
 	Username       string    `json:"username"`
 	HashedPassword string    `json:"-"`
+	Role           string    `json:"role"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -15,6 +21,7 @@ type User struct {
 type UserResponse struct {
 	ID        int64     `json:"id"`
 	Username  string    `json:"username"`
+	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

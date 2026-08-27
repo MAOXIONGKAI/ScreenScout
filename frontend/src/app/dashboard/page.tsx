@@ -89,8 +89,8 @@ export default function DashboardPage() {
       <div className={styles.dashboardWrapper}>
         {/* Header */}
         <div className={styles.header}>
-          <div className={styles.badge}>
-            <span>✨ Member Account</span>
+          <div className={styles.badge} style={user.role === "admin" ? { background: "rgba(234, 179, 8, 0.2)", borderColor: "rgba(251, 191, 36, 0.6)", color: "#fef08a" } : undefined}>
+            <span>{user.role === "admin" ? "👑 Administrator Account" : "✨ Member Account"}</span>
           </div>
           <h1 className={styles.title}>User Dashboard</h1>
           <p className={styles.subtitle}>
@@ -100,10 +100,14 @@ export default function DashboardPage() {
 
         {/* Profile Card */}
         <div className={styles.profileCard}>
-          <div className={styles.avatarCircle}>{initials}</div>
+          <div className={styles.avatarCircle} style={user.role === "admin" ? { background: "linear-gradient(135deg, #eab308, #f59e0b)", color: "#000000" } : undefined}>
+            {user.role === "admin" ? "👑" : initials}
+          </div>
           <div className={styles.profileInfo}>
             <h2 className={styles.profileUsername}>{user.username}</h2>
             <div className={styles.profileMeta}>
+              <span>Role: <strong style={{ color: user.role === "admin" ? "#fef08a" : "#86efac", textTransform: "capitalize" }}>{user.role || "user"}</strong></span>
+              <span>•</span>
               <span>Joined: {formatDate(user.created_at)}</span>
             </div>
           </div>
@@ -111,6 +115,35 @@ export default function DashboardPage() {
             Log Out
           </button>
         </div>
+
+        {/* Section: Admin Console Link (Admin Only) */}
+        {user.role === "admin" && (
+          <section className={styles.sectionCard} style={{ border: "1px solid rgba(251, 191, 36, 0.4)" }}>
+            <div className={styles.sectionHeader}>
+              <div className={styles.sectionIcon}>👑</div>
+              <div>
+                <h2 className={styles.sectionTitle}>Administrator Console</h2>
+                <p className={styles.sectionSubtitle}>
+                  Access platform-level telemetry metrics, user inventories, screening tracking jobs, and server operations.
+                </p>
+              </div>
+            </div>
+
+            <div className={styles.monitoringCtaBox} style={{ background: "rgba(234, 179, 8, 0.1)", borderColor: "rgba(251, 191, 36, 0.3)" }}>
+              <p className={styles.monitoringCtaText}>
+                View real-time movie counts, registered user base analytics, cache hit rates, and trigger server-side cache invalidation in the <strong>Admin Console</strong>.
+              </p>
+              <Link
+                href="/admin"
+                className={styles.goToMonitoringsBtn}
+                style={{ background: "linear-gradient(135deg, #eab308, #f59e0b)", color: "#000000", fontWeight: 700 }}
+              >
+                <span>Open Admin Console</span>
+                <span>→</span>
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* Section: Quick Link to Movie Monitorings */}
         <section className={styles.sectionCard}>

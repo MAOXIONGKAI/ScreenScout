@@ -63,7 +63,67 @@ export interface MoviesResponse {
 export interface User {
   id: number;
   username: string;
+  role?: "user" | "admin";
   created_at: string;
+}
+
+// Admin stats telemetry interfaces
+export interface MovieStats {
+  total: number;
+  now_showing: number;
+  coming_soon: number;
+}
+
+export interface CinemaStats {
+  cinemas_count: number;
+  providers_count: number;
+  schedules_count: number;
+}
+
+export interface UserStats {
+  total_users: number;
+  admin_count: number;
+  member_count: number;
+}
+
+export interface ReviewStats {
+  total_reviews: number;
+  average_rating: number;
+}
+
+export interface SubscriptionStats {
+  total_jobs: number;
+  active_jobs: number;
+  paused_jobs: number;
+  triggered_count: number;
+}
+
+export interface SystemStatus {
+  database_status: string;
+  redis_cache_status: string;
+  redis_hit_rate: number;
+  notification_pipeline: string;
+  server_time: string;
+}
+
+export interface ProviderStat {
+  code: string;
+  name: string;
+  total_movies: number;
+  now_showing: number;
+  coming_soon: number;
+  cinemas_count: number;
+  schedules_count: number;
+}
+
+export interface AdminStatsResponse {
+  movies: MovieStats;
+  cinemas: CinemaStats;
+  providers: ProviderStat[];
+  users: UserStats;
+  reviews: ReviewStats;
+  subscriptions: SubscriptionStats;
+  system: SystemStatus;
 }
 
 // AuthResponse is returned on successful login / registration.

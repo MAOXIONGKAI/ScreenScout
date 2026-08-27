@@ -155,6 +155,39 @@
   font-weight: 700;
 }
 
+.adminBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 5px 12px;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.18), rgba(245, 158, 11, 0.28));
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: #fef08a;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.2);
+}
+
+.adminBadge:hover {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.3), rgba(245, 158, 11, 0.45));
+  border-color: rgba(251, 191, 36, 0.8);
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.4);
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+.adminBadgeActive {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.35), rgba(245, 158, 11, 0.55));
+  border-color: rgba(251, 191, 36, 0.95);
+  box-shadow: 0 0 24px rgba(234, 179, 8, 0.55);
+  color: #ffffff;
+  font-weight: 800;
+}
+
 .logoutBtn {
   font-family: var(--font-family);
   font-size: var(--font-size-xs);

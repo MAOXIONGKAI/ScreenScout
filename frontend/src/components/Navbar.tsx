@@ -23,7 +23,9 @@ export default function Navbar() {
   const isMoviesActive = pathname === "/" || pathname.startsWith("/movies");
   const isMonitoringsActive = pathname.startsWith("/monitorings");
   const isAboutActive = pathname.startsWith("/about");
-  const isDashboardActive = pathname.startsWith("/dashboard");
+  const isDashboardActive = pathname === "/dashboard";
+  const isAdminActive = pathname.startsWith("/admin");
+  const isAdmin = user?.role === "admin";
 
   return (
     <header className={`${styles.header} ${isScrolled ? styles.headerScrolled : ""}`}>
@@ -46,6 +48,16 @@ export default function Navbar() {
           >
             Monitorings
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`${styles.navLink} ${isAdminActive ? styles.navLinkActive : ""}`}
+              style={{ color: "#fef08a" }}
+            >
+              <span>👑</span>
+              <span>Admin</span>
+            </Link>
+          )}
           <Link
             href="/about"
             className={`${styles.navLink} ${isAboutActive ? styles.navLinkActive : ""}`}
@@ -59,13 +71,13 @@ export default function Navbar() {
               {user ? (
                 <>
                   <Link
-                    href="/dashboard"
-                    className={`${styles.userBadge} ${
-                      isDashboardActive ? styles.userBadgeActive : ""
+                    href={isAdmin ? "/admin" : "/dashboard"}
+                    className={`${isAdmin ? styles.adminBadge : styles.userBadge} ${
+                      isAdmin ? (isAdminActive ? styles.adminBadgeActive : "") : (isDashboardActive ? styles.userBadgeActive : "")
                     }`}
-                    title="Open User Dashboard"
+                    title={isAdmin ? "Open Admin Console" : "Open User Dashboard"}
                   >
-                    <span>👤</span>
+                    <span>{isAdmin ? "👑" : "👤"}</span>
                     <span>{user.username}</span>
                   </Link>
                   <button

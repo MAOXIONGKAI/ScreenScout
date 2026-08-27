@@ -11,6 +11,7 @@ import {
   Review,
   CreateReviewPayload,
   MovieReviewsResponse,
+  AdminStatsResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -290,5 +291,57 @@ export async function deleteMovieReview(
     const data = await res.json();
     throw new Error(data.error || "Failed to delete review");
   }
+}
+
+// fetchAdminStats fetches platform metrics for administrators (GET /api/admin/stats)
+export async function fetchAdminStats(token: string): Promise<AdminStatsResponse> {
+  const res = await fetch(`${API_BASE}/api/admin/stats`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to fetch admin statistics");
+  }
+  return data;
+}
+
+// invalidateAllMovieCache triggers server-side Redis cache purge (POST /api/cache/movies/invalidate)
+export async function invalidateAllMovieCache(token?: string): Promise<{ flushed_count: number; message: string }> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}/api/cache/movies/invalidate`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to invalidate cache");
+  }
+  return data;
+}
+
+// triggerSubscriptionCheck triggers matching pass across active subscriptions (POST /api/subscriptions/check)
+export async function triggerSubscriptionCheck(): Promise<{ message: string; matches_found: number }> {
+  const res = await fetch(`${API_BASE}/api/subscriptions/check`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to trigger subscription check");
+  }
+  return data;
 }
 

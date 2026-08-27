@@ -34,12 +34,19 @@ func (r *UserRepo) EnsureUserTable(ctx context.Context) error {
 		id                  BIGINT PRIMARY KEY,
 		username            VARCHAR(55) NOT NULL UNIQUE,
 		hashed_password     TEXT NOT NULL,
+		role                VARCHAR(20) NOT NULL DEFAULT 'user',
 		created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE SEQUENCE IF NOT EXISTS users_id_seq START WITH 1 INCREMENT BY 1;
 	ALTER TABLE users ALTER COLUMN id SET DEFAULT nextval('users_id_seq');
+
+	-- Add role column if missing
+	ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
+
+	-- Ensure default admin user has admin role
+	UPDATE users SET role = 'admin' WHERE LOWER(username) = 'admin';
 
 	-- Migrate existing columns from TIMESTAMP to TIMESTAMPTZ if needed
 	DO $$ 
@@ -60,6 +67,7 @@ func (r *UserRepo) EnsureUserTable(ctx context.Context) error {
 	ALTER TABLE users ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
 
 	CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+	CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 	`
 	_, err := r.Pool.Exec(ctx, query)
 	if err != nil {
@@ -68,12 +76,12 @@ func (r *UserRepo) EnsureUserTable(ctx context.Context) error {
 	return nil
 }
 
-// CreateUser inserts a new user record.
+// CreateUser inserts a new user record with default 'user' role.
 func (r *UserRepo) CreateUser(ctx context.Context, username, hashedPassword string) (*model.User, error) {
 	query := `
-		INSERT INTO users (username, hashed_password)
-		VALUES ($1, $2)
-		RETURNING id, username, hashed_password, created_at, updated_at
+		INSERT INTO users (username, hashed_password, role)
+		VALUES ($1, $2, 'user')
+		RETURNING id, username, hashed_password, role, created_at, updated_at
 	`
 
 	var user model.User
@@ -81,6 +89,7 @@ func (r *UserRepo) CreateUser(ctx context.Context, username, hashedPassword stri
 		&user.ID,
 		&user.Username,
 		&user.HashedPassword,
+		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -99,7 +108,7 @@ func (r *UserRepo) CreateUser(ctx context.Context, username, hashedPassword stri
 // GetUserByUsername retrieves a user by username (case-insensitive search).
 func (r *UserRepo) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
 	query := `
-		SELECT id, username, hashed_password, created_at, updated_at
+		SELECT id, username, hashed_password, role, created_at, updated_at
 		FROM users
 		WHERE LOWER(username) = LOWER($1)
 		LIMIT 1
@@ -110,6 +119,7 @@ func (r *UserRepo) GetUserByUsername(ctx context.Context, username string) (*mod
 		&user.ID,
 		&user.Username,
 		&user.HashedPassword,
+		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -127,7 +137,7 @@ func (r *UserRepo) GetUserByUsername(ctx context.Context, username string) (*mod
 // GetUserByID retrieves a user by ID.
 func (r *UserRepo) GetUserByID(ctx context.Context, id int64) (*model.User, error) {
 	query := `
-		SELECT id, username, hashed_password, created_at, updated_at
+		SELECT id, username, hashed_password, role, created_at, updated_at
 		FROM users
 		WHERE id = $1
 		LIMIT 1
@@ -138,6 +148,7 @@ func (r *UserRepo) GetUserByID(ctx context.Context, id int64) (*model.User, erro
 		&user.ID,
 		&user.Username,
 		&user.HashedPassword,
+		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)

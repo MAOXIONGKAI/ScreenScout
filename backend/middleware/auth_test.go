@@ -13,6 +13,7 @@ func TestGenerateAndParseToken(t *testing.T) {
 	user := &model.User{
 		ID:       42,
 		Username: "testcinemafan",
+		Role:     model.RoleAdmin,
 	}
 
 	tokenStr, err := GenerateToken(user)
@@ -33,6 +34,9 @@ func TestGenerateAndParseToken(t *testing.T) {
 	}
 	if claims.Username != "testcinemafan" {
 		t.Errorf("Expected Username 'testcinemafan', got '%s'", claims.Username)
+	}
+	if claims.Role != model.RoleAdmin {
+		t.Errorf("Expected Role '%s', got '%s'", model.RoleAdmin, claims.Role)
 	}
 	if claims.Issuer != "screenscout" {
 		t.Errorf("Expected Issuer 'screenscout', got '%s'", claims.Issuer)
@@ -126,5 +130,43 @@ func TestGetJWTSecret(t *testing.T) {
 	secretCustom := getJWTSecret()
 	if secretCustom != "custom-ci-secret" {
 		t.Errorf("Expected 'custom-ci-secret', got '%s'", secretCustom)
+	}
+}
+
+func TestAdminRequired_RoleCheck(t *testing.T) {
+	// Verify user with admin role generates valid claims
+	adminUser := &model.User{
+		ID:       1,
+		Username: "admin",
+		Role:     model.RoleAdmin,
+	}
+	adminToken, err := GenerateToken(adminUser)
+	if err != nil {
+		t.Fatalf("GenerateToken for admin failed: %v", err)
+	}
+	adminClaims, err := ParseToken(adminToken)
+	if err != nil {
+		t.Fatalf("ParseToken for admin failed: %v", err)
+	}
+	if adminClaims.Role != model.RoleAdmin {
+		t.Errorf("Expected admin role, got %s", adminClaims.Role)
+	}
+
+	// Verify standard user has user role
+	normalUser := &model.User{
+		ID:       20,
+		Username: "clara.lim94",
+		Role:     model.RoleUser,
+	}
+	normalToken, err := GenerateToken(normalUser)
+	if err != nil {
+		t.Fatalf("GenerateToken for normal user failed: %v", err)
+	}
+	normalClaims, err := ParseToken(normalToken)
+	if err != nil {
+		t.Fatalf("ParseToken for normal user failed: %v", err)
+	}
+	if normalClaims.Role != model.RoleUser {
+		t.Errorf("Expected user role, got %s", normalClaims.Role)
 	}
 }

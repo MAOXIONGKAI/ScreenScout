@@ -29,14 +29,21 @@ func getJWTSecret() string {
 type UserClaims struct {
 	UserID   int64  `json:"user_id"`
 	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken creates a signed JWT token valid for 7 days.
 func GenerateToken(user *model.User) (string, error) {
+	role := user.Role
+	if role == "" {
+		role = model.RoleUser
+	}
+
 	claims := UserClaims{
 		UserID:   user.ID,
 		Username: user.Username,
+		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -99,6 +106,30 @@ func AuthRequired() app.HandlerFunc {
 		// Store user claims in context
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
+		c.Set("role", claims.Role)
+		c.Next(ctx)
+	}
+}
+
+// AdminRequired is Hertz middleware that restricts access strictly to users with the 'admin' role.
+func AdminRequired() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
+		roleVal, exists := c.Get("role")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, map[string]string{
+				"error": "authentication required",
+			})
+			return
+		}
+
+		role, ok := roleVal.(string)
+		if !ok || role != model.RoleAdmin {
+			c.AbortWithStatusJSON(http.StatusForbidden, map[string]string{
+				"error": "forbidden: administrator privileges required",
+			})
+			return
+		}
+
 		c.Next(ctx)
 	}
 }

@@ -35,7 +35,7 @@ from psycopg2.extras import execute_values
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/screenscout")
 CACHE_INVALIDATE_URL = os.getenv("CACHE_INVALIDATE_URL", "http://localhost:8080/api/cache/movies/invalidate")
-BCRYPT_HASH = "$2a$10$FdySvp.Q17iF/Eq.xIhyJOG2/4fh0fVgO1nGzME6Ir8x2Rd.znhYC"  # Password123!
+BCRYPT_HASH = "$2a$10$E94AjriKZC2Jq3O/yuoS9eTFYEIqKHHH.umblOjp9WmO7E8oxzoTm"  # Password123!
 
 FIRST_NAMES = [
     "marcus", "clara", "weiliang", "ziyang", "chloe", "rachel", "aaron", "daniel",
@@ -467,6 +467,11 @@ def main():
         cur.execute("TRUNCATE TABLE reviews RESTART IDENTITY CASCADE;")
         # Delete demo users (keeping any custom user ID <= 2 if needed)
         cur.execute("DELETE FROM users WHERE id > 2;")
+        # Ensure admin user has admin role, valid password, and exact requested 2024-08-23 15:23 SG join date
+        cur.execute(
+            "UPDATE users SET role = 'admin', hashed_password = %s, created_at = '2024-08-23 15:23:00+08:00', updated_at = '2024-08-23 15:23:00+08:00' WHERE username = 'admin';",
+            (BCRYPT_HASH,)
+        )
         conn.commit()
 
         # Check remaining users
@@ -489,13 +494,14 @@ def main():
                 users_to_insert.append((
                     candidate,
                     BCRYPT_HASH,
+                    "user",
                     created_at,
                     created_at
                 ))
             idx += 1
 
         insert_user_query = """
-        INSERT INTO users (username, hashed_password, created_at, updated_at)
+        INSERT INTO users (username, hashed_password, role, created_at, updated_at)
         VALUES %s
         ON CONFLICT (username) DO NOTHING;
         """

@@ -124,6 +124,7 @@ func (h *AuthHandler) Register(ctx context.Context, c *app.RequestContext) {
 		User: model.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
+			Role:      user.Role,
 			CreatedAt: user.CreatedAt.In(sgtLocation),
 		},
 	})
@@ -183,6 +184,7 @@ func (h *AuthHandler) Login(ctx context.Context, c *app.RequestContext) {
 		User: model.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
+			Role:      user.Role,
 			CreatedAt: user.CreatedAt.In(sgtLocation),
 		},
 	})
@@ -217,6 +219,7 @@ func (h *AuthHandler) Me(ctx context.Context, c *app.RequestContext) {
 	c.JSON(http.StatusOK, model.UserResponse{
 		ID:        user.ID,
 		Username:  user.Username,
+		Role:      user.Role,
 		CreatedAt: user.CreatedAt.In(sgtLocation),
 	})
 }
