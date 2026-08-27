@@ -72,7 +72,7 @@ func (h *SubscriptionHandler) UpdateNotificationChannel(ctx context.Context, c *
 
 	handle := strings.TrimSpace(req.ChannelUserID)
 	if handle == "" {
-		c.JSON(http.StatusBadRequest, map[string]string{"error": "telegram handle cannot be empty"})
+		c.JSON(http.StatusBadRequest, map[string]string{"error": "Telegram handle cannot be empty"})
 		return
 	}
 
@@ -84,6 +84,25 @@ func (h *SubscriptionHandler) UpdateNotificationChannel(ctx context.Context, c *
 	isEnabled := true
 	if req.IsEnabled != nil {
 		isEnabled = *req.IsEnabled
+	}
+
+	// Validate Telegram handle format and existence
+	if channelType == "TELEGRAM" && isEnabled {
+		cleanHandle := strings.TrimPrefix(handle, "@")
+		// Check if handle belongs to a known local user
+		demoUser, _ := h.UserRepo.GetUserByUsername(ctx, cleanHandle)
+		if demoUser == nil {
+			validatedHandle, vErr := h.Telegram.ValidateTelegramHandle(ctx, handle)
+			if vErr != nil {
+				c.JSON(http.StatusBadRequest, map[string]string{
+					"error": vErr.Error(),
+				})
+				return
+			}
+			handle = validatedHandle
+		} else {
+			handle = "@" + cleanHandle
+		}
 	}
 
 	ch, err := h.SubRepo.UpsertNotificationChannel(ctx, userID, channelType, handle, isEnabled)

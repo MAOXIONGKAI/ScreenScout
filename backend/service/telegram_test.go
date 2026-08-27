@@ -150,3 +150,67 @@ func TestSendNotification_Fallback(t *testing.T) {
 		t.Errorf("expected 'SIMULATED', got %s", status)
 	}
 }
+
+func TestValidateTelegramHandle_Format(t *testing.T) {
+	svc := NewTelegramService()
+	ctx := context.Background()
+
+	// Empty handle
+	_, err := svc.ValidateTelegramHandle(ctx, "")
+	if err == nil || !strings.Contains(err.Error(), "empty") {
+		t.Errorf("Expected empty handle error, got: %v", err)
+	}
+
+	// Invalid format: too short
+	_, err = svc.ValidateTelegramHandle(ctx, "@abc")
+	if err == nil || !strings.Contains(err.Error(), "invalid Telegram handle format") {
+		t.Errorf("Expected format error for short handle, got: %v", err)
+	}
+
+	// Invalid format: special symbols
+	_, err = svc.ValidateTelegramHandle(ctx, "@hello!world")
+	if err == nil || !strings.Contains(err.Error(), "invalid Telegram handle format") {
+		t.Errorf("Expected format error for special characters, got: %v", err)
+	}
+
+	// Invalid format: starts with number
+	_, err = svc.ValidateTelegramHandle(ctx, "@123user")
+	if err == nil || !strings.Contains(err.Error(), "invalid Telegram handle format") {
+		t.Errorf("Expected format error for starting with digit, got: %v", err)
+	}
+
+	// Valid numeric chat ID
+	validID, err := svc.ValidateTelegramHandle(ctx, "987654321")
+	if err != nil {
+		t.Errorf("Expected numeric ID to be valid, got: %v", err)
+	}
+	if validID != "987654321" {
+		t.Errorf("Expected '987654321', got %s", validID)
+	}
+}
+
+func TestValidateTelegramHandle_NonExistent(t *testing.T) {
+	svc := NewTelegramService()
+	ctx := context.Background()
+
+	// Random non-existent handle
+	_, err := svc.ValidateTelegramHandle(ctx, "@nonexistent_user_998822119933")
+	if err == nil || !strings.Contains(err.Error(), "does not exist") {
+		t.Errorf("Expected 'does not exist' error, got: %v", err)
+	}
+}
+
+func TestValidateTelegramHandle_Existing(t *testing.T) {
+	svc := NewTelegramService()
+	ctx := context.Background()
+
+	// ScreenScout bot handle or Telegram official handle
+	res, err := svc.ValidateTelegramHandle(ctx, "@The_ScreenScout_Bot")
+	if err != nil {
+		t.Errorf("Expected The_ScreenScout_Bot to exist, got: %v", err)
+	}
+	if res != "@The_ScreenScout_Bot" {
+		t.Errorf("Expected '@The_ScreenScout_Bot', got '%s'", res)
+	}
+}
+

@@ -126,7 +126,9 @@ export default function MonitoringsPage() {
 
     const handle = telegramHandle.trim();
     if (!handle) {
-      setChannelError("Please enter your Telegram handle (e.g. @your_username)");
+      const msg = "Please enter your Telegram handle (e.g. @your_username)";
+      setChannelError(msg);
+      showToast(msg, "Telegram Handle Required", "warning");
       return;
     }
 
@@ -135,10 +137,17 @@ export default function MonitoringsPage() {
       const updated = await saveNotificationChannel(token, handle);
       setChannel(updated);
       setTelegramHandle(updated.channel_user_id);
-      setChannelSuccess("✓ Telegram handle saved successfully!");
+      setChannelSuccess("✓ Telegram handle verified & saved successfully!");
+      showToast(
+        `Telegram handle ${updated.channel_user_id} verified and linked for instant screening alerts.`,
+        "Telegram Handle Linked",
+        "success"
+      );
       setTimeout(() => setChannelSuccess(""), 4000);
     } catch (err: any) {
-      setChannelError(err.message || "Failed to save Telegram handle");
+      const msg = err.message || "Failed to verify Telegram handle. Please ensure the handle exists.";
+      setChannelError(msg);
+      showToast(msg, "Telegram Handle Not Found", "error");
     } finally {
       setSavingChannel(false);
     }

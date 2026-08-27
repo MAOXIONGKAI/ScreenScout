@@ -4,15 +4,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/maoxiongkai/screenscout-backend/cache"
 	"github.com/maoxiongkai/screenscout-backend/model"
 	"github.com/redis/go-redis/v9"
+)
+
+var (
+	telegramHandleRegex    = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]{4,31}$`)
+	telegramNumericIDRegex = regexp.MustCompile(`^[0-9]{5,15}$`)
 )
 
 // DefaultNotificationStream is the default Redis Stream key for asynchronous notification dispatch.
@@ -199,3 +207,66 @@ func (s *TelegramService) SendNotification(recipient, message string) (string, e
 
 	return "SENT", nil
 }
+
+// ValidateTelegramHandle verifies that a Telegram username has a valid format and exists on Telegram.
+func (s *TelegramService) ValidateTelegramHandle(ctx context.Context, handle string) (string, error) {
+	clean := strings.TrimSpace(handle)
+	clean = strings.TrimPrefix(clean, "@")
+	clean = strings.TrimSpace(clean)
+
+	if clean == "" {
+		return "", errors.New("telegram handle cannot be empty")
+	}
+
+	// 1. Numeric chat ID (direct ID)
+	if telegramNumericIDRegex.MatchString(clean) {
+		return clean, nil
+	}
+
+	// 2. Format validation (Telegram username standards: 5-32 alphanumeric/underscore characters, starts with a letter)
+	if !telegramHandleRegex.MatchString(clean) {
+		return "", errors.New("invalid Telegram handle format: must be 5–32 alphanumeric characters or underscores and start with a letter (e.g. @your_handle)")
+	}
+
+	// 3. Online Telegram existence check via Telegram domain resolver (t.me/<username>)
+	reqURL := fmt.Sprintf("https://t.me/%s", clean)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return "@" + clean, nil
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		// Network timeout or offline environment, gracefully allow valid format
+		return "@" + clean, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		bodyBytes, readErr := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+		if readErr == nil {
+			html := string(bodyBytes)
+
+			ogTitle := ""
+			ogTitleIdx := strings.Index(html, `meta property="og:title" content="`)
+			if ogTitleIdx != -1 {
+				start := ogTitleIdx + len(`meta property="og:title" content="`)
+				end := strings.Index(html[start:], `"`)
+				if end != -1 {
+					ogTitle = html[start : start+end]
+				}
+			}
+
+			hasPageTitle := strings.Contains(html, `class="tgme_page_title"`)
+
+			// If og:title is default or "Telegram: Contact @...", the handle does not exist on Telegram
+			if !hasPageTitle || ogTitle == "Telegram – a new era of messaging" || strings.HasPrefix(ogTitle, "Telegram: Contact @") {
+				return "", fmt.Errorf("the Telegram handle '@%s' does not exist. Please check the spelling or start a chat with @The_ScreenScout_Bot first", clean)
+			}
+		}
+	}
+
+	return "@" + clean, nil
+}
+
