@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 """
-Seed Script: Populates high-variety authentic users and realistic movie reviews
+Seed Script: Populates high-variety authentic users and realistic, context-aware movie reviews
 across movies in the ScreenScout database.
 
-User Archetypes Included:
-1. Real Names & Initials (e.g. clara.lim94, marcus_tan, eugene.goh88, dr.wong)
-2. Singapore Dialect & Local Names (e.g. tan_ah_teck, meiling.sg, ziyang_chen, quek_jun_jie)
-3. Malay & Indian Cultural Names (e.g. farhan_rahman, nurfazira_98, priya_sharma, arun.kumar, syakir_ismail)
-4. Cinephiles & Film Buffs (e.g. imax_junkie, ScreenJunkie99, gv_popcorn_fan, director_cut_only)
-5. Casual Moviegoers & Snack Fans (e.g. popcorn_gobbler, sleeps_in_cinema, crying_at_gv, nacho_lover)
-6. Aesthetic & Minimalist Handles (e.g. vibecheck.film, solocinema_, neon.reels, velvet_cinema)
-7. Singapore Neighborhood Film Fans (e.g. kopitiam_critic, eastcoast_cinephile, jurong_filmgoer, vivocity_regular)
-8. Gamer / Modern Social Handles (e.g. xX_MovieMaster_Xx, the_real_jason, CyberFlick)
-9. Clean Short Handles & Initials (e.g. k.tan, j.lim_, wong.c, s.kumar)
-
-Rules:
-1. Status Rule:
-   - "now_showing": release_date is null OR release_date <= CURRENT_DATE
-   - "coming_soon": release_date > CURRENT_DATE
-2. Reviews are ONLY seeded for movies that are "now_showing".
-   "coming_soon" movies remain unreviewed and locked.
-3. Repopulates database users and reviews with rich variety.
+Key Features:
+1. Context-Aware Content:
+   - Reviews reference the movie's title, genre, synopsis / description premise, director, and cast members.
+2. Varied Review Lengths:
+   - Ultra-Short / One-Liners (15%): Punchy cinema reactions ("10/10 masterclass in sci-fi.", "Loved every minute!")
+   - Short (35%): 1-2 sentence reactions referencing lead actors, sound mix, and cinema venues (GV, Shaw Lido, etc.).
+   - Medium (35%): 2-4 sentences exploring the synopsis premise, acting dynamics, and thematic pacing.
+   - Detailed In-Depth Critique (15%): Comprehensive cinephile analysis covering direction, score, and cinematography.
+3. Release-Date Weighted Review Counts:
+   - Opening Day (Today): 2–6 fresh reviews from earlier today.
+   - Opening Weekend (1–2d): 6–12 reviews.
+   - Week 1 (3–7d): 13–24 reviews.
+   - Week 2–3 (8–21d): 25–42 reviews.
+   - Established (1+ month): 45–75 reviews.
+   - Coming Soon: 0 reviews (locked).
+4. Multi-Archetype Usernames with Varied Casing:
+   - PascalCase, FULL_CAPITAL, TitleCase with separators, Gamer/Stylized, and Lowercase.
 """
 
 import os
 import sys
+import re
 import random
 import argparse
 import urllib.request
@@ -104,50 +104,10 @@ SG_LOCAL_HANDLES = [
     "vivocity_regular", "bedok_movielover", "woodlands_filmbuff", "yishun_cinema_club"
 ]
 
-REVIEW_TEMPLATES_5_STAR = [
-    "Absolute masterpiece! The cinematography and pacing were on point from start to finish. A must-watch on the biggest cinema screen possible!",
-    "One of the best cinematic experiences I've had in Singapore this year. The Dolby Atmos sound design made every scene hit so much harder.",
-    "Exceeded all my expectations! The story was gripping, the acting was phenomenal, and the third act had the entire cinema hall holding their breath.",
-    "Brilliant direction and worldbuilding. 10/10 would watch again at GV Max. Don't skip the post-credits!",
-    "Flawless execution. The emotional beats resonated deeply and the visuals were breathtaking throughout. Deserves every award it gets.",
-    "Incredible performance by the lead cast. Kept me on the edge of my seat the whole time. Best watch of the month!",
-    "Stunning visuals and an airtight screenplay. Left the theatre completely blown away. Truly worth the ticket price!",
-    "Caught the opening weekend screening at Shaw Lido — atmosphere was electric. This movie delivers on every single level.",
-    "Such an immersive film! Took my friends to watch it and everyone agreed it's an easy 10/10. Great direction.",
-    "Pure cinematic brilliance. The soundtrack and visual color palette alone were worth the admission ticket!"
-]
-
-REVIEW_TEMPLATES_4_STAR = [
-    "Solid 4/5! Really engaging plot with great performances all around. Pacing dipped slightly in the middle, but the climax made up for it.",
-    "Great movie for a Friday night out with friends. Visuals and soundtrack were stellar, just wished a few character arcs had more closure.",
-    "Very entertaining watch. Kept me invested throughout. Definitely recommend watching it in cinema for the sound effects.",
-    "Strong performances and slick direction. A few predictable tropes here and there, but overall a thoroughly enjoyable experience.",
-    "Exceeded expectations! Fun, stylish, and well-acted. Would happily recommend to anyone looking for a good weekend flick.",
-    "Really good film. The director did a fantastic job building tension. Popcorn was finished within 30 minutes because I couldn't look away!",
-    "Engaging storyline and crisp cinematography. Just minor pacing hiccups, but overall high production quality.",
-    "Super fun watch! Great crowd reactions in the hall tonight. Well worth catching on the big screen.",
-    "Enjoyed it thoroughly! Solid character dynamics and impressive practical effects throughout the third act."
-]
-
-REVIEW_TEMPLATES_3_STAR = [
-    "Decent watch overall. Good acting and decent action sequences, but the plot felt a bit generic and dragged in the second act.",
-    "Average film. Had some great moments and funny lines, but nothing particularly groundbreaking. Good for casual watching.",
-    "Not bad, but didn't quite live up to the hype. The visual effects were impressive, though the dialogue could have used some polish.",
-    "A bit of a mixed bag. Strong first half, but the ending felt somewhat rushed. Still an okay weekend popcorn watch.",
-    "Entertaining enough if you don't overthink the plot holes. Great sound design and solid lead performance saved it.",
-    "Fun popcorn movie for a lazy afternoon. Nothing revolutionary, but it passes the time nicely."
-]
-
-REVIEW_TEMPLATES_2_STAR = [
-    "Pretty underwhelming unfortunately. Had high expectations given the cast, but the script was lackluster and predictable.",
-    "Disappointing pacing and weak character development. Visuals were nice, but the story lacked genuine substance.",
-    "Felt overly long and struggled to find its footing. A few decent scenes couldn't rescue the convoluted plot.",
-    "The trailers made it look much better than it actually was. Felt somewhat flat in the second half."
-]
-
-REVIEW_TEMPLATES_1_STAR = [
-    "Really struggled to sit through this one. Clunky dialogue, confusing plot twists, and zero emotional connection to the characters.",
-    "Way below expectations. Felt disjointed and poorly edited. Save your ticket money for something else."
+THEATRES = [
+    "GV Max", "Shaw Lido IMAX", "GV Vivocity", "Shaw Theatres Jewel",
+    "GV Plaza", "Shaw Paya Lebar", "GV Suntec City", "the big screen",
+    "IMAX with Laser", "Dolby Atmos hall", "Shaw IMAX", "GV Gold Class"
 ]
 
 
@@ -213,13 +173,13 @@ def generate_varied_username(idx: int) -> str:
 
     # Apply diverse casing styles: PascalCase, FULL_CAPITAL, Capitalized_Separators, or lowercase
     roll = random.random()
-    if roll < 0.25:  # 25% PascalCase (e.g. MarcusTan, ClaraLim94, PopcornGobbler, TanAhTeck)
+    if roll < 0.25:  # 25% PascalCase
         cleaned = raw.replace(".", " ").replace("_", " ").replace("-", " ")
         parts = [p.capitalize() for p in cleaned.split()]
         return "".join(parts)[:40]
-    elif roll < 0.40:  # 15% FULL CAPITAL CASE (e.g. MARCUS_TAN, CLARA_LIM, IMAX_SG, POPCORN_GOBBLER)
+    elif roll < 0.40:  # 15% FULL CAPITAL CASE
         return raw.upper()[:40]
-    elif roll < 0.55:  # 15% Title with separators (e.g. Marcus_Tan, Clara.Lim94, Farhan_Rahman)
+    elif roll < 0.55:  # 15% Title with separators
         sep_char = "_" if "_" in raw else "." if "." in raw else ""
         if sep_char:
             return sep_char.join(p.capitalize() for p in raw.split(sep_char))[:40]
@@ -227,6 +187,225 @@ def generate_varied_username(idx: int) -> str:
 
     # 45% Standard lowercase
     return raw.lower()[:40]
+
+
+def extract_clean_movie_metadata(title: str, genre: str, director: str, casts: str, description: str):
+    """Extracts cleaned entities and synopsis hook for contextual review writing."""
+    clean_title = re.sub(r"\s*[\*]+\s*", "", title)
+    clean_title = re.sub(r"\s*\((?:Reissue|25th Anniversary|M|PG13|NC16|R21|35mm|Live From [^)]+)\)", "", clean_title, flags=re.IGNORECASE).strip()
+    if not clean_title:
+        clean_title = title
+
+    # Lead Actor / Duo
+    lead_actor = ""
+    if casts:
+        actors = [a.strip() for a in re.split(r"[,/|]| and ", casts) if a.strip()]
+        if actors:
+            lead_actor = actors[0]
+            if len(actors) > 1 and random.random() < 0.35:
+                lead_actor = f"{actors[0]} and {actors[1]}"
+
+    # Primary Genre
+    primary_genre = (genre.split("/")[0].split(",")[0].strip().lower() if genre else "movie")
+    if not primary_genre:
+        primary_genre = "film"
+
+    # Synopsis Premise / Hook
+    plot_hook = ""
+    if description:
+        cleaned_desc = re.sub(r"\s+", " ", description).strip()
+        sentences = [s.strip() for s in re.split(r'(?<!\b[A-Z])(?<=[.!?])\s+', cleaned_desc) if s.strip()]
+        if sentences:
+            s0 = sentences[0].rstrip(".")
+            if len(s0) > 135:
+                s0 = s0[:132] + "..."
+            plot_hook = s0
+
+    return clean_title, primary_genre, director or "", lead_actor, plot_hook
+
+
+def generate_contextual_review(
+    title: str,
+    genre: str,
+    director: str,
+    casts: str,
+    description: str,
+    rating: int
+) -> str:
+    """Generates authentic reviews spanning 4 distinct length tiers with contextual references."""
+    clean_title, primary_genre, dir_name, lead_actor, plot_hook = extract_clean_movie_metadata(
+        title, genre, director, casts, description
+    )
+    theatre = random.choice(THEATRES)
+
+    # Choose length tier:
+    # Tier 1: One-liner / Ultra-short (15%)
+    # Tier 2: Short (1-2 sentences) (35%)
+    # Tier 3: Medium (2-4 sentences with synopsis/actors) (35%)
+    # Tier 4: In-depth cinephile critique (15%)
+    length_tier = random.random()
+
+    # -------------------------------------------------------------
+    # TIER 1: ULTRA-SHORT / ONE-LINERS (15%)
+    # -------------------------------------------------------------
+    if length_tier < 0.15:
+        if rating == 5:
+            return random.choice([
+                f"Absolute masterpiece. 10/10.",
+                f"Peak cinema! Loved every second of {clean_title}.",
+                f"Best watch of the month. Must catch in {theatre}!",
+                f"Flawless from start to finish.",
+                f"10/10 masterclass in {primary_genre}.",
+                f"Stunning visuals and emotional storytelling. Loved it!",
+                f"Deserves all the awards. Incredible watch!",
+                f"Pure cinematic perfection.",
+                f"Hands down the best film I've watched all year."
+            ])
+        elif rating == 4:
+            return random.choice([
+                f"Solid 4/5! Really fun Friday night watch.",
+                f"Super enjoyable film, {lead_actor or 'the cast'} did great.",
+                f"Exceeded my expectations. Great crowd energy tonight.",
+                f"Thoroughly entertaining {primary_genre} flick.",
+                f"Very good movie! Soundtrack was on point.",
+                f"4/5. Great visuals and solid pacing."
+            ])
+        elif rating == 3:
+            return random.choice([
+                f"Decent watch, good for a casual weekend afternoon.",
+                f"Not bad, but nothing mindblowing.",
+                f"Average {primary_genre} flick. Has some fun moments.",
+                f"Okay watch if you don't overthink the plot.",
+                f"A bit predictable, but still entertaining enough."
+            ])
+        elif rating == 2:
+            return random.choice([
+                f"Pretty underwhelming unfortunately.",
+                f"Didn't live up to the trailer hype.",
+                f"Pacing was way too slow in the middle.",
+                f"Disappointing script despite a promising premise."
+            ])
+        else:
+            return random.choice([
+                f"Really struggled to sit through this. Skip it.",
+                f"Waste of ticket money unfortunately.",
+                f"Clunky dialogue and confusing plot. 1/5."
+            ])
+
+    # -------------------------------------------------------------
+    # TIER 2: SHORT (1-2 sentences) (35%)
+    # -------------------------------------------------------------
+    elif length_tier < 0.50:
+        if rating == 5:
+            actor_shout = f"{lead_actor} was phenomenal." if lead_actor else "The entire cast was phenomenal."
+            dir_shout = f" by {dir_name}" if dir_name else ""
+            return random.choice([
+                f"Caught {clean_title} at {theatre} tonight — the atmosphere was electric! {actor_shout}",
+                f"One of the best {primary_genre} experiences I've had all year. The Dolby Atmos sound design made every sequence hit so much harder.",
+                f"{clean_title} delivered on every single level. Stunning visual effects and an airtight screenplay that kept me on the edge of my seat.",
+                f"Brilliant direction{dir_shout} and an unforgettable soundtrack. Don't leave before the credits finish!",
+                f"Exceeded all expectations! The chemistry between the characters and the emotional climax were breathtaking."
+            ])
+        elif rating == 4:
+            actor_intro = f"{lead_actor} shines in their role, and " if lead_actor else ""
+            return random.choice([
+                f"Really strong {primary_genre} release. {actor_intro}the pacing keeps you invested right until the final act.",
+                f"Great movie for a night out with friends. A few predictable moments, but the climax more than made up for it!",
+                f"Very stylish and well-acted. {clean_title} is definitely worth catching on the big screen for the sound design.",
+                f"Solid 4 stars. Pacing dipped slightly in the middle, but the action and emotional beats landed nicely."
+            ])
+        elif rating == 3:
+            return random.choice([
+                f"Entertaining enough for a casual weekend watch. The visual effects were great, though the dialogue could have used some polish.",
+                f"A bit of a mixed bag. {clean_title} started strong, but the second half felt somewhat rushed.",
+                f"Good popcorn flick with some funny lines and nice cinematography, but it follows a pretty standard formula.",
+                f"Decent watch overall. {lead_actor or 'The cast'} did what they could with a relatively predictable script."
+            ])
+        elif rating == 2:
+            return random.choice([
+                f"Had high expectations given the cast, but the script felt lackluster and the characters lacked real depth.",
+                f"Felt overly long and struggled to find its footing. A few decent scenes couldn't rescue the convoluted plot.",
+                f"The trailers made {clean_title} look much better than it actually was. Quite flat in execution."
+            ])
+        else:
+            return random.choice([
+                f"Way below expectations. Felt disjointed, poorly edited, and failed to connect emotionally.",
+                f"Save your ticket money for something else. A frustrating watch from start to finish."
+            ])
+
+    # -------------------------------------------------------------
+    # TIER 3: MEDIUM (2-4 sentences with synopsis context) (35%)
+    # -------------------------------------------------------------
+    elif length_tier < 0.85:
+        if rating == 5:
+            synopsis_part = f"The premise around {plot_hook.lower()} is handled with remarkable depth and suspense." if plot_hook else "The central storyline is captivating from the opening scene."
+            actor_part = f"{lead_actor} gives an exceptional performance that grounds the entire film." if lead_actor else "The performances across the board are top tier."
+            dir_part = f"Director {dir_name} created an airtight vision." if dir_name else "The visual direction is breathtaking."
+            return f"{clean_title} is a standout achievement in the {primary_genre} genre. {synopsis_part} {actor_part} {dir_part} Easily one of my favorite cinema experiences this year in Singapore."
+
+        elif rating == 4:
+            synopsis_part = f"The way the story unfolds around {plot_hook.lower()} keeps you engaged throughout." if plot_hook else "The storyline moves at a brisk pace with great set pieces."
+            actor_part = f"{lead_actor} brings great charisma to the screen." if lead_actor else "The lead acting is solid and authentic."
+            return f"I had a great time watching {clean_title} at {theatre}. {synopsis_part} {actor_part} While the third act wrapped up slightly faster than expected, the overall journey was thoroughly entertaining and well worth the admission."
+
+        elif rating == 3:
+            synopsis_part = f"the plot regarding {plot_hook.lower()}" if plot_hook else "the main plot"
+            return f"{clean_title} has plenty of enjoyable elements, especially the visual aesthetics and sound design. However, {synopsis_part} loses some momentum midway through. It's a fun popcorn watch for fans of {primary_genre}, but don't expect a groundbreaking narrative."
+
+        elif rating == 2:
+            actor_part = f"talented actors like {lead_actor}" if lead_actor else "a promising premise"
+            return f"Unfortunately, {clean_title} didn't quite hit the mark for me. Despite {actor_part}, the screenplay felt underdeveloped and leaned too heavily on generic clichés. The visuals in {theatre} were nice, but the emotional core was lacking."
+
+        else:
+            return f"A disappointing execution all around. {clean_title} struggles with awkward dialogue, jarring tonal shifts, and repetitive sequences. Even the climax fell completely flat after two hours of buildup."
+
+    # -------------------------------------------------------------
+    # TIER 4: DETAILED / IN-DEPTH CINEPHILE CRITIQUE (15%)
+    # -------------------------------------------------------------
+    else:
+        if rating == 5:
+            dir_clause = f"Director {dir_name} demonstrates complete mastery over pacing and visual tone, " if dir_name else "The direction demonstrates remarkable poise and cinematic ambition, "
+            plot_clause = f"exploring {plot_hook.lower()} with genuine nuance and emotional weight. " if plot_hook else "crafting a rich, immersive world from the very first frame. "
+            actor_clause = f"The performance by {lead_actor} anchors the emotional stakes, " if lead_actor else "The lead performances anchor the emotional stakes, "
+            return (
+                f"As an avid filmgoer, {clean_title} was everything I hoped for and more on the big screen. "
+                f"{dir_clause}{plot_clause}"
+                f"{actor_clause}elevating what could have been a standard {primary_genre} into a deeply memorable cinematic experience. "
+                f"The sound mix and cinematography in {theatre} were reference-quality. A must-watch in theatres — 5/5 stars without hesitation."
+            )
+
+        elif rating == 4:
+            actor_clause = f"{lead_actor} delivers a compelling lead performance that drives the tension, " if lead_actor else "The cast delivers grounded, authentic performances that drive the tension, "
+            return (
+                f"A thoroughly crafted and entertaining entry in modern {primary_genre} cinema. "
+                f"{clean_title} succeeds largely because of its sharp dialogue, atmospheric worldbuilding, and memorable set pieces. "
+                f"{actor_clause}"
+                f"especially during the high-stakes sequences in the second half. "
+                f"While a few secondary subplots felt slightly compressed for runtime, the overarching story delivers solid emotional and visual payoff. Highly recommended for a weekend cinema session!"
+            )
+
+        elif rating == 3:
+            plot_clause = f"the core narrative surrounding {plot_hook.lower()} takes a backseat to familiar tropes " if plot_hook else "the script relies somewhat heavily on predictable formulas "
+            return (
+                f"{clean_title} delivers plenty of visual spectacle, but leaves a bit to be desired on the narrative front. "
+                f"The production values, practical effects, and audio mixing are undeniably high quality, creating a great sensory experience in {theatre}. "
+                f"However, {plot_clause}during the middle hour. Still an enjoyable weekend movie if you're looking for slick entertainment with popcorn and drinks."
+            )
+
+        elif rating == 2:
+            dir_clause = f"{dir_name}'s direction and " if dir_name else ""
+            return (
+                f"I really wanted to love {clean_title}, especially given {dir_clause}the intriguing setup. "
+                f"Unfortunately, the execution falls victim to uneven pacing and uninspired character choices. "
+                f"The visual effects are decent, but they can't compensate for a screenplay that drags without meaningful emotional stakes. "
+                f"Worth waiting for streaming rather than paying full cinema ticket prices."
+            )
+
+        else:
+            return (
+                f"A deeply frustrating watch. {clean_title} suffers from wooden dialogue, disjointed editing, and a runtime that feels far longer than it should. "
+                f"None of the character motivations feel earned, and the final revelation lands with a thud. Definitely one to skip."
+            )
 
 
 def invalidate_backend_cache():
@@ -245,7 +424,7 @@ def invalidate_backend_cache():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Populate rich-variety demo users and reviews for now-showing movies."
+        description="Populate rich-variety demo users and context-aware reviews for now-showing movies."
     )
     parser.add_argument(
         "--incremental",
@@ -259,8 +438,12 @@ def main():
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
 
-    # 1. Fetch existing movies and classify by release date vs today
-    cur.execute("SELECT id, title, genre, release_date FROM movies ORDER BY id;")
+    # 1. Fetch existing movies with full metadata (title, genre, release_date, director, casts, description)
+    cur.execute("""
+        SELECT id, title, genre, release_date, director, casts, description
+        FROM movies
+        ORDER BY id;
+    """)
     all_movies = cur.fetchall()
     if not all_movies:
         print("❌ No movies found in database. Please scrape movies first.")
@@ -333,14 +516,14 @@ def main():
         print(f"ℹ️  Incremental Mode: Populating {len(movies_to_populate)} unreviewed Now Showing movie(s)...")
     else:
         movies_to_populate = now_showing_movies
-        print(f"🍿 Populating fresh reviews across all {len(movies_to_populate)} Now Showing movies...")
+        print(f"🍿 Populating fresh context-aware reviews across all {len(movies_to_populate)} Now Showing movies...")
 
     # Generate Reviews for target Now Showing movies
     reviews_to_insert = []
     movie_review_stats = []
 
     for movie in movies_to_populate:
-        movie_id, title, genre, release_date = movie
+        movie_id, title, genre, release_date, director, casts, description = movie
 
         # Determine realistic review count based on days since theatrical release
         if release_date is None:
@@ -379,19 +562,24 @@ def main():
             rand_val = random.random()
             if rand_val < 0.42:
                 rating = 5
-                content = random.choice(REVIEW_TEMPLATES_5_STAR)
             elif rand_val < 0.78:
                 rating = 4
-                content = random.choice(REVIEW_TEMPLATES_4_STAR)
             elif rand_val < 0.93:
                 rating = 3
-                content = random.choice(REVIEW_TEMPLATES_3_STAR)
             elif rand_val < 0.98:
                 rating = 2
-                content = random.choice(REVIEW_TEMPLATES_2_STAR)
             else:
                 rating = 1
-                content = random.choice(REVIEW_TEMPLATES_1_STAR)
+
+            # Generate contextual review referencing synopsis, casts, director, genre, title
+            content = generate_contextual_review(
+                title=title,
+                genre=genre or "",
+                director=director or "",
+                casts=casts or "",
+                description=description or "",
+                rating=rating
+            )
 
             now = datetime.now(timezone.utc)
             if days_live <= 0:
@@ -425,7 +613,7 @@ def main():
                 review_time
             ))
 
-    print(f"💾 Inserting {len(reviews_to_insert):,} reviews into database...")
+    print(f"💾 Inserting {len(reviews_to_insert):,} context-aware reviews into database...")
     insert_reviews_query = """
     INSERT INTO reviews (movie_id, user_id, rating, content, created_at, updated_at)
     VALUES %s
@@ -464,11 +652,10 @@ def main():
     print(f"   • All users password:              Password123!")
 
     print("\n📊 Sample Movies Release Date vs Review Counts:")
-    # Sort sample by count ascending
-    for title, rel_date, stage, cnt in sorted(movie_review_stats, key=lambda x: x[3])[:8]:
+    for title, rel_date, stage, cnt in sorted(movie_review_stats, key=lambda x: x[3])[:6]:
         print(f"   • {title[:32]:<32} | Rel: {rel_date} ({stage:<24}) -> {cnt:>2} reviews")
-    if len(movie_review_stats) > 8:
-        for title, rel_date, stage, cnt in sorted(movie_review_stats, key=lambda x: x[3])[-4:]:
+    if len(movie_review_stats) > 6:
+        for title, rel_date, stage, cnt in sorted(movie_review_stats, key=lambda x: x[3])[-3:]:
             print(f"   • {title[:32]:<32} | Rel: {rel_date} ({stage:<24}) -> {cnt:>2} reviews")
 
     print("\n✨ Sample Varied Usernames:")
