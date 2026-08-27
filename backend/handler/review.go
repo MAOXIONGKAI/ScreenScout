@@ -25,7 +25,7 @@ func NewReviewHandler(reviewRepo *repo.ReviewRepo, movieRepo *repo.MovieRepo) *R
 	}
 }
 
-// ListMovieReviews handles GET /api/movies/:id/reviews?page=1&limit=5
+// ListMovieReviews handles GET /api/movies/:id/reviews?page=1&limit=5&rating=5&sort=newest
 func (h *ReviewHandler) ListMovieReviews(ctx context.Context, c *app.RequestContext) {
 	idStr := c.Param("id")
 	movieID, err := strconv.ParseInt(idStr, 10, 64)
@@ -48,7 +48,19 @@ func (h *ReviewHandler) ListMovieReviews(ctx context.Context, c *app.RequestCont
 		}
 	}
 
-	reviews, total, totalPages, avgRating, ratingCounts, err := h.ReviewRepo.ListReviewsByMovieID(ctx, movieID, page, limit)
+	ratingFilter := 0
+	if rStr := c.Query("rating"); rStr != "" {
+		if r, err := strconv.Atoi(rStr); err == nil && r >= 1 && r <= 5 {
+			ratingFilter = r
+		}
+	}
+
+	sortBy := strings.TrimSpace(c.Query("sort"))
+	if sortBy == "" {
+		sortBy = "newest"
+	}
+
+	reviews, total, totalPages, avgRating, ratingCounts, err := h.ReviewRepo.ListReviewsByMovieID(ctx, movieID, page, limit, ratingFilter, sortBy)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return

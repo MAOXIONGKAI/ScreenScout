@@ -228,11 +228,19 @@ export async function toggleSubscription(
 export async function fetchMovieReviews(
   movieId: number,
   page: number = 1,
-  limit: number = 5
+  limit: number = 5,
+  rating: number = 0,
+  sort: string = "newest"
 ): Promise<MovieReviewsResponse> {
   const params = new URLSearchParams();
   if (page) params.append("page", page.toString());
   if (limit) params.append("limit", limit.toString());
+  if (rating && rating >= 1 && rating <= 5) {
+    params.append("rating", rating.toString());
+  }
+  if (sort && sort !== "newest") {
+    params.append("sort", sort);
+  }
 
   const query = params.toString() ? `?${params.toString()}` : "";
   const res = await fetch(`${API_BASE}/api/movies/${movieId}/reviews${query}`);

@@ -55,8 +55,8 @@ func (r *ReviewRepo) EnsureReviewTable(ctx context.Context) error {
 	return nil
 }
 
-// ListReviewsByMovieID returns paginated reviews for a movie along with summary metrics (average rating, counts, total pages).
-func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64, page, limit int) ([]model.Review, int, int, float64, map[string]int, error) {
+// ListReviewsByMovieID returns paginated, filtered, and sorted reviews for a movie along with summary metrics.
+func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64, page, limit, ratingFilter int, sortBy string) ([]model.Review, int, int, float64, map[string]int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -87,7 +87,7 @@ func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64, pa
 		"4": 0,
 		"5": 0,
 	}
-	var total int
+	var overallTotal int
 	var totalRatingSum int
 
 	for rows.Next() {
@@ -97,32 +97,51 @@ func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64, pa
 		}
 		key := fmt.Sprintf("%d", starRating)
 		ratingCounts[key] = count
-		total += count
+		overallTotal += count
 		totalRatingSum += starRating * count
 	}
 
 	var avgRating float64
-	if total > 0 {
-		avgRating = math.Round((float64(totalRatingSum)/float64(total))*10) / 10
+	if overallTotal > 0 {
+		avgRating = math.Round((float64(totalRatingSum)/float64(overallTotal))*10) / 10
+	}
+
+	// Determine total count for pagination based on filter
+	effectiveTotal := overallTotal
+	if ratingFilter >= 1 && ratingFilter <= 5 {
+		effectiveTotal = ratingCounts[fmt.Sprintf("%d", ratingFilter)]
 	}
 
 	totalPages := 0
-	if total > 0 {
-		totalPages = int(math.Ceil(float64(total) / float64(limit)))
+	if effectiveTotal > 0 {
+		totalPages = int(math.Ceil(float64(effectiveTotal) / float64(limit)))
+	}
+
+	// Determine sorting clause
+	var orderClause string
+	switch strings.ToLower(sortBy) {
+	case "oldest":
+		orderClause = "ORDER BY r.created_at ASC"
+	case "highest_rating":
+		orderClause = "ORDER BY r.rating DESC, r.created_at DESC"
+	case "lowest_rating":
+		orderClause = "ORDER BY r.rating ASC, r.created_at DESC"
+	default: // "newest"
+		orderClause = "ORDER BY r.created_at DESC"
 	}
 
 	// 2. Fetch paginated review items
 	offset := (page - 1) * limit
-	query := `
+	query := fmt.Sprintf(`
 	SELECT r.id, r.movie_id, r.user_id, u.username, r.rating, r.content, r.created_at, r.updated_at
 	FROM reviews r
 	JOIN users u ON u.id = r.user_id
-	WHERE r.movie_id = $1
-	ORDER BY r.created_at DESC
+	WHERE r.movie_id = $1 AND ($4 = 0 OR r.rating = $4)
+	%s
 	LIMIT $2 OFFSET $3
-	`
+	`, orderClause)
 
-	pRows, err := r.Pool.Query(ctx, query, movieID, limit, offset)
+	pRows, err := r.Pool.Query(ctx, query, movieID, limit, offset, ratingFilter)
 	if err != nil {
 		return nil, 0, 0, 0, nil, fmt.Errorf("query paginated reviews: %w", err)
 	}
@@ -150,7 +169,7 @@ func (r *ReviewRepo) ListReviewsByMovieID(ctx context.Context, movieID int64, pa
 		reviews = []model.Review{}
 	}
 
-	return reviews, total, totalPages, avgRating, ratingCounts, nil
+	return reviews, effectiveTotal, totalPages, avgRating, ratingCounts, nil
 }
 
 // CreateOrUpdateReview inserts or updates a user's review for a given movie.

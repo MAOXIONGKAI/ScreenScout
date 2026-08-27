@@ -101,7 +101,7 @@ backend: ## Start Hertz Go backend API server on :8080
 	cd backend && go run main.go
 
 frontend: ## Start Next.js frontend dev server on :3000
-	cd frontend && npm run dev
+	cd frontend && rm -rf .next/cache && npm run dev
 
 dev: db-up ## Start database, Redis, notification-service, backend, and frontend (all local)
 	@echo "Starting notification service, backend and frontend..."

@@ -84,7 +84,11 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
   });
   const [loading, setLoading] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [page, setPage] = useState(1);
+
+  // Pagination & Filter & Sorting State
+  const [page, setPage] = useState<number>(1);
+  const [ratingFilter, setRatingFilter] = useState<number>(0); // 0 = all ratings
+  const [sortBy, setSortBy] = useState<string>("newest");
 
   // Form State
   const [rating, setRating] = useState<number>(5);
@@ -93,28 +97,43 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Reset to page 1 on movieId change
+  // Reset to page 1, rating filter 0, sort newest on movieId change
   useEffect(() => {
     setPage(1);
+    setRatingFilter(0);
+    setSortBy("newest");
   }, [movieId]);
 
-  // Load reviews for current page
-  const loadReviews = useCallback(async (pageToLoad: number = page) => {
-    if (!movieId) return;
-    try {
-      setLoading(true);
-      const data = await fetchMovieReviews(movieId, pageToLoad, ITEMS_PER_PAGE);
-      setReviewsData(data);
-    } catch (err: any) {
-      console.error("Failed to load reviews:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [movieId, page]);
+  // Load reviews for current page, rating filter, and sorting
+  const loadReviews = useCallback(
+    async (
+      pageToLoad: number = page,
+      ratingToLoad: number = ratingFilter,
+      sortToLoad: string = sortBy
+    ) => {
+      if (!movieId) return;
+      try {
+        setLoading(true);
+        const data = await fetchMovieReviews(
+          movieId,
+          pageToLoad,
+          ITEMS_PER_PAGE,
+          ratingToLoad,
+          sortToLoad
+        );
+        setReviewsData(data);
+      } catch (err: any) {
+        console.error("Failed to load reviews:", err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [movieId, page, ratingFilter, sortBy]
+  );
 
   useEffect(() => {
-    loadReviews(page);
-  }, [loadReviews, page]);
+    loadReviews(page, ratingFilter, sortBy);
+  }, [loadReviews, page, ratingFilter, sortBy]);
 
   // Check if current user has already written a review
   const userReview = useMemo(() => {
@@ -141,6 +160,17 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
     setPage(newPage);
   };
 
+  const handleFilterClick = (star: number) => {
+    const nextFilter = ratingFilter === star ? 0 : star;
+    setRatingFilter(nextFilter);
+    setPage(1);
+  };
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortBy(e.target.value);
+    setPage(1);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
@@ -165,8 +195,8 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
         rating,
         content: content.trim(),
       });
-      // Refresh current page
-      await loadReviews(page);
+      // Refresh reviews list
+      await loadReviews(page, ratingFilter, sortBy);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to submit review. Please try again.");
     } finally {
@@ -185,13 +215,19 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
       await deleteMovieReview(token, movieId, reviewId);
       setContent("");
       setRating(5);
-      await loadReviews(page);
+      await loadReviews(page, ratingFilter, sortBy);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to delete review.");
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Aggregate stats across all ratings
+  const allRatingsCount = useMemo(() => {
+    const counts = reviewsData.rating_counts || {};
+    return Object.values(counts).reduce((sum, c) => sum + c, 0);
+  }, [reviewsData.rating_counts]);
 
   const totalReviews = reviewsData.total;
   const avgRating = reviewsData.average_rating;
@@ -226,12 +262,12 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
         <div className={styles.sectionTitleRow}>
           <h2 className={styles.sectionTitle}>💬 Audience Reviews & Ratings</h2>
           <span className={styles.reviewCountBadge}>
-            {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
+            {allRatingsCount} {allRatingsCount === 1 ? "review" : "reviews"}
           </span>
         </div>
 
         <div className={styles.sectionHeaderRight}>
-          {totalReviews > 0 && (
+          {allRatingsCount > 0 && (
             <div className={styles.avgRatingPill}>
               <span>★</span>
               <span>{avgRating.toFixed(1)}</span>
@@ -252,7 +288,7 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
       {!isCollapsed && (
         <div className={styles.reviewsBody}>
           {/* Ratings Breakdown Summary */}
-          {totalReviews > 0 && (
+          {allRatingsCount > 0 && (
             <div className={styles.summaryCard}>
               <div className={styles.scoreCol}>
                 <div className={styles.avgScore}>
@@ -267,16 +303,25 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
                   ))}
                 </div>
                 <span className={styles.totalReviewsLabel}>
-                  Based on {totalReviews} rating{totalReviews === 1 ? "" : "s"}
+                  Based on {allRatingsCount} rating{allRatingsCount === 1 ? "" : "s"}
                 </span>
               </div>
 
               <div className={styles.breakdownCol}>
                 {[5, 4, 3, 2, 1].map((star) => {
                   const count = reviewsData.rating_counts[star.toString()] || 0;
-                  const percent = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+                  const percent = allRatingsCount > 0 ? (count / allRatingsCount) * 100 : 0;
+                  const isFiltered = ratingFilter === star;
+
                   return (
-                    <div key={star} className={styles.breakdownRow}>
+                    <div
+                      key={star}
+                      className={`${styles.breakdownRow} ${styles.breakdownRowInteractive} ${
+                        isFiltered ? styles.breakdownRowActive : ""
+                      }`}
+                      onClick={() => handleFilterClick(star)}
+                      title={`Click to filter by ${star} star reviews`}
+                    >
                       <span className={styles.starLevel}>
                         {star} <span>★</span>
                       </span>
@@ -398,6 +443,59 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
             </div>
           )}
 
+          {/* Filters and Sorting Toolbar (Shown if movie has any reviews or filter active) */}
+          {allRatingsCount > 0 && (
+            <div className={styles.toolbar}>
+              {/* Star Rating Filter Pills */}
+              <div className={styles.filterPills}>
+                <button
+                  type="button"
+                  className={`${styles.filterPill} ${
+                    ratingFilter === 0 ? styles.filterPillAllActive : ""
+                  }`}
+                  onClick={() => handleFilterClick(0)}
+                >
+                  All ({allRatingsCount})
+                </button>
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = reviewsData.rating_counts[star.toString()] || 0;
+                  const isActive = ratingFilter === star;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      className={`${styles.filterPill} ${
+                        isActive ? styles.filterPillActive : ""
+                      }`}
+                      onClick={() => handleFilterClick(star)}
+                    >
+                      <span>{star} ★</span>
+                      <span>({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sorting Selector */}
+              <div className={styles.sortGroup}>
+                <label htmlFor="review-sort" className={styles.sortLabel}>
+                  Sort:
+                </label>
+                <select
+                  id="review-sort"
+                  className={styles.sortSelect}
+                  value={sortBy}
+                  onChange={handleSortChange}
+                >
+                  <option value="newest">🕒 Most Recent</option>
+                  <option value="oldest">⏳ Oldest First</option>
+                  <option value="highest_rating">⭐ Highest Rating</option>
+                  <option value="lowest_rating">📉 Lowest Rating</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           {/* Reviews Feed */}
           {reviewsData.reviews.length > 0 ? (
             <>
@@ -455,6 +553,7 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
                     Showing <strong>{(page - 1) * ITEMS_PER_PAGE + 1}</strong> –{" "}
                     <strong>{Math.min(page * ITEMS_PER_PAGE, totalReviews)}</strong> of{" "}
                     <strong>{totalReviews}</strong> reviews
+                    {ratingFilter > 0 && ` (${ratingFilter}★ filter)`}
                   </div>
 
                   <div className={styles.paginationControls}>
@@ -511,9 +610,24 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
             !loading && (
               <div className={styles.emptyReviews}>
                 <div className={styles.emptyIcon}>🍿</div>
-                <h3 className={styles.emptyTitle}>No reviews yet</h3>
+                <h3 className={styles.emptyTitle}>
+                  {ratingFilter > 0
+                    ? `No ${ratingFilter}-star reviews found`
+                    : "No reviews yet"}
+                </h3>
                 <p className={styles.emptyText}>
-                  Be the first to share your rating and review for this movie!
+                  {ratingFilter > 0 ? (
+                    <button
+                      type="button"
+                      className={styles.filterPillAllActive}
+                      style={{ marginTop: "0.5rem", border: "none", cursor: "pointer" }}
+                      onClick={() => handleFilterClick(0)}
+                    >
+                      Clear {ratingFilter}★ Filter
+                    </button>
+                  ) : (
+                    "Be the first to share your rating and review for this movie!"
+                  )}
                 </p>
               </div>
             )
