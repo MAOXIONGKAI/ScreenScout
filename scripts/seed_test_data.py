@@ -727,12 +727,17 @@ def main():
         # Clean reviews table
         cur.execute("TRUNCATE TABLE reviews RESTART IDENTITY CASCADE;")
         # Delete demo users (keeping any custom user ID <= 2 if needed)
-        cur.execute("DELETE FROM users WHERE id > 2;")
+        cur.execute("DELETE FROM users WHERE id > 2 AND username != 'admin';")
         # Ensure admin user has admin role, valid password, and exact requested 2024-08-23 15:23 SG join date
-        cur.execute(
-            "UPDATE users SET role = 'admin', hashed_password = %s, created_at = '2024-08-23 15:23:00+08:00', updated_at = '2024-08-23 15:23:00+08:00' WHERE username = 'admin';",
-            (BCRYPT_HASH,)
-        )
+        cur.execute("""
+            INSERT INTO users (username, hashed_password, role, created_at, updated_at)
+            VALUES ('admin', %s, 'admin', '2024-08-23 15:23:00+08:00', '2024-08-23 15:23:00+08:00')
+            ON CONFLICT (username) DO UPDATE 
+            SET role = 'admin', 
+                hashed_password = EXCLUDED.hashed_password, 
+                created_at = '2024-08-23 15:23:00+08:00', 
+                updated_at = '2024-08-23 15:23:00+08:00';
+        """, (BCRYPT_HASH,))
         conn.commit()
 
         # Check remaining users

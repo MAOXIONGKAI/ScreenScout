@@ -19,6 +19,11 @@ func TestPasswordValidation(t *testing.T) {
 }
 
 func TestBcryptHashMatching(t *testing.T) {
+	seedHash := "$2a$10$E94AjriKZC2Jq3O/yuoS9eTFYEIqKHHH.umblOjp9WmO7E8oxzoTm"
+	if err := bcrypt.CompareHashAndPassword([]byte(seedHash), []byte("Password123!")); err != nil {
+		t.Errorf("Seed hash comparison failed for Password123!: %v", err)
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte("Password123!"), bcrypt.DefaultCost)
 	if err != nil {
 		t.Fatalf("GenerateFromPassword failed: %v", err)
