@@ -1,10 +1,14 @@
 package service
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/maoxiongkai/screenscout-backend/cache"
 	"github.com/maoxiongkai/screenscout-backend/model"
+	"github.com/redis/go-redis/v9"
 )
 
 func TestFormatMovieAlertMessage_Empty(t *testing.T) {
@@ -86,5 +90,63 @@ func TestFormatWelcomeMessage(t *testing.T) {
 	}
 	if !strings.Contains(msg, "Happy movie hunting! 🍿") {
 		t.Error("Welcome message should contain closing tagline")
+	}
+}
+
+func TestSendNotification_RedisStream(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := cache.NewFromUniversalClient(rdb)
+
+	svc := NewTelegramService()
+	svc.SetRedisClient(redisClient)
+	svc.StreamName = "test:notifications:stream"
+
+	status, err := svc.SendNotification("@testuser", "Hello from Redis Stream test!")
+	if err != nil {
+		t.Fatalf("unexpected error on SendNotification: %v", err)
+	}
+	if status != "QUEUED" {
+		t.Fatalf("expected status 'QUEUED', got %s", status)
+	}
+
+	// Verify the stream contains the event
+	ctx := context.Background()
+	msgs, err := rdb.XRange(ctx, "test:notifications:stream", "-", "+").Result()
+	if err != nil {
+		t.Fatalf("failed to read stream: %v", err)
+	}
+	if len(msgs) != 1 {
+		t.Fatalf("expected 1 message in stream, got %d", len(msgs))
+	}
+
+	values := msgs[0].Values
+	if values["recipient"] != "@testuser" {
+		t.Errorf("expected recipient @testuser, got %v", values["recipient"])
+	}
+	if values["message"] != "Hello from Redis Stream test!" {
+		t.Errorf("expected message content, got %v", values["message"])
+	}
+	if values["channel_type"] != "TELEGRAM" {
+		t.Errorf("expected channel_type TELEGRAM, got %v", values["channel_type"])
+	}
+}
+
+func TestSendNotification_Fallback(t *testing.T) {
+	// Service without Redis client should fallback to simulation mode when bot token is empty
+	svc := NewTelegramService()
+	svc.BotToken = ""
+
+	status, err := svc.SendNotification("@offlineuser", "Fallback message")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if status != "SIMULATED" {
+		t.Errorf("expected 'SIMULATED', got %s", status)
 	}
 }

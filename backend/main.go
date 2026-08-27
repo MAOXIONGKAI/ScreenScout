@@ -87,6 +87,7 @@ func main() {
 
 	// Initialize services & handlers
 	tgService := service.NewTelegramService()
+	tgService.SetRedisClient(redisClient)
 	movieHandler := handler.NewMovieHandler(movieRepo)
 	cinemaHandler := handler.NewCinemaHandler(cinemaRepo)
 	authHandler := handler.NewAuthHandler(userRepo)

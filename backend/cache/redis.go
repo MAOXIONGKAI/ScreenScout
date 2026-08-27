@@ -285,6 +285,30 @@ func (c *Client) Stats() Stats {
 	}
 }
 
+// Redis returns the underlying raw *redis.Client.
+func (c *Client) Redis() *redis.Client {
+	if c == nil {
+		return nil
+	}
+	return c.rdb
+}
+
+// XAdd appends an event message to a Redis stream.
+func (c *Client) XAdd(ctx context.Context, args *redis.XAddArgs) (string, error) {
+	if !c.IsAvailable() {
+		return "", errors.New("redis is not available")
+	}
+	id, err := c.rdb.XAdd(ctx, args).Result()
+	if err != nil {
+		c.errs.Add(1)
+		if isNetErr(err) {
+			c.available.Store(false)
+		}
+		return "", err
+	}
+	return id, nil
+}
+
 // Close closes the underlying Redis connection pool.
 func (c *Client) Close() error {
 	if c != nil && c.rdb != nil {

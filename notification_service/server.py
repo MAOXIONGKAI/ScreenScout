@@ -1,11 +1,14 @@
 import json
 import logging
 import sys
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict
 
 from . import config
 from .telegram_client import TelegramClient
+from .stream_consumer import NotificationStreamConsumer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,6 +19,9 @@ logger = logging.getLogger("notification_service.server")
 
 # Global Telegram client instance
 telegram_client = TelegramClient()
+
+# Global Redis Stream consumer instance
+stream_consumer = NotificationStreamConsumer(telegram_client=telegram_client)
 
 
 class NotificationRequestHandler(BaseHTTPRequestHandler):
@@ -42,10 +48,15 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
 
         if path in ("/health", "/api/health"):
+            stream_stats = stream_consumer.get_stats()
             self._send_json(200, {
                 "status": "healthy",
                 "service": "ScreenScout Notification Service",
                 "version": "1.0.0",
+                "redis_stream": {
+                    "connected": stream_stats.get("connected", False),
+                    "running": stream_stats.get("running", False),
+                },
             })
             return
 
@@ -61,6 +72,7 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
                     "cached_users_count": len(telegram_client.username_to_chat_id),
                     "cached_users": list(telegram_client.username_to_chat_id.keys()),
                 },
+                "redis_stream": stream_consumer.get_stats(),
             })
             return
 
@@ -157,10 +169,6 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
         logger.info("%s - - [%s] %s" % (self.client_address[0], self.log_date_time_string(), format % args))
 
 
-import threading
-import time
-
-
 def _poll_telegram_updates_loop():
     """Background daemon thread to poll /start messages from Telegram."""
     while True:
@@ -180,13 +188,17 @@ def run_server(host: str = config.HOST, port: int = config.PORT):
     bot_name = telegram_client.get_bot_username()
     bot_display = f"@{bot_name}" if bot_name else "(Simulation Mode - No Token)"
 
-    # Start background polling thread
-    poller = threading.Thread(target=_poll_telegram_updates_loop, daemon=True)
+    # Start background Telegram update polling thread
+    poller = threading.Thread(target=_poll_telegram_updates_loop, daemon=True, name="TelegramUpdatePoller")
     poller.start()
+
+    # Start background Redis Stream consumer
+    stream_consumer.start()
 
     print("=" * 60)
     print(f"🚀 ScreenScout Notification Service running on http://{host}:{port}")
     print(f"🤖 Telegram Bot Status: {bot_display}")
+    print(f"⚡ Redis Stream Worker: {stream_consumer.stream_name} (Group: {stream_consumer.group_name})")
     print(f"📡 API Endpoints:")
     print(f"   - POST http://localhost:{port}/api/notify")
     print(f"   - GET  http://localhost:{port}/api/status")
@@ -197,6 +209,7 @@ def run_server(host: str = config.HOST, port: int = config.PORT):
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nStopping Notification Service...")
+        stream_consumer.stop()
         httpd.server_close()
 
 

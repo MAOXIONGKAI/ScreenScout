@@ -38,9 +38,29 @@ def get_db_connection():
 
 def send_telegram_alert(recipient: str, message: str) -> str:
     """
-    Invokes the ScreenScout Notification Service to dispatch the real Telegram alert.
-    Falls back to direct Telegram client if notification service daemon is unavailable or restarting.
+    Dispatches a Telegram alert.
+    Prioritizes publishing to the Redis Stream (asynchronous, non-blocking queue),
+    falling back to the HTTP notification service, and finally direct Telegram client.
     """
+    # 1. Primary: Publish to Redis Stream
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    stream_name = os.getenv("NOTIFICATION_STREAM_NAME", "screenscout:notifications:stream")
+    try:
+        import redis
+        r = redis.from_url(redis_url, decode_responses=True, socket_timeout=2)
+        r.xadd(stream_name, {
+            "recipient": recipient,
+            "channel_type": "TELEGRAM",
+            "message": message,
+            "parse_mode": "Markdown",
+            "created_at": str(time.time()),
+            "retry_count": "0",
+        })
+        print(f"[Redis Stream] Queued alert to {recipient} on stream '{stream_name}'")
+        return "QUEUED"
+    except Exception:
+        pass
+
     payload_data = {
         "recipient": recipient,
         "channel_type": "TELEGRAM",
@@ -49,7 +69,7 @@ def send_telegram_alert(recipient: str, message: str) -> str:
     }
     json_bytes = json.dumps(payload_data).encode("utf-8")
 
-    # 1. Primary: Try Notification Service
+    # 2. Secondary: Try Notification Service HTTP
     try:
         req = urllib.request.Request(
             NOTIFICATION_SERVICE_URL,

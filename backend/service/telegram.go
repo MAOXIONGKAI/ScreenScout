@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,21 +10,39 @@ import (
 	"strings"
 	"time"
 
+	"github.com/maoxiongkai/screenscout-backend/cache"
 	"github.com/maoxiongkai/screenscout-backend/model"
+	"github.com/redis/go-redis/v9"
 )
+
+// DefaultNotificationStream is the default Redis Stream key for asynchronous notification dispatch.
+const DefaultNotificationStream = "screenscout:notifications:stream"
 
 // TelegramService handles sending alerts to users' Telegram handles.
 type TelegramService struct {
-	BotToken string
-	Client   *http.Client
+	BotToken    string
+	Client      *http.Client
+	RedisClient *cache.Client
+	StreamName  string
 }
 
 // NewTelegramService creates a new TelegramService instance.
 func NewTelegramService() *TelegramService {
-	return &TelegramService{
-		BotToken: os.Getenv("TELEGRAM_BOT_TOKEN"),
-		Client:   &http.Client{Timeout: 10 * time.Second},
+	streamName := os.Getenv("NOTIFICATION_STREAM_NAME")
+	if streamName == "" {
+		streamName = DefaultNotificationStream
 	}
+
+	return &TelegramService{
+		BotToken:   os.Getenv("TELEGRAM_BOT_TOKEN"),
+		Client:     &http.Client{Timeout: 10 * time.Second},
+		StreamName: streamName,
+	}
+}
+
+// SetRedisClient attaches a Redis client for asynchronous stream publishing.
+func (s *TelegramService) SetRedisClient(c *cache.Client) {
+	s.RedisClient = c
 }
 
 // FormatMovieAlertMessage formats a rich notification text for single or multiple matched movies.
@@ -92,8 +111,37 @@ func FormatWelcomeMessage(name, handle string) string {
 }
 
 // SendNotification dispatches a message to the user's Telegram handle or chat ID.
+// It prioritizes publishing an event to Redis Streams (asynchronous, decoupled),
+// falling back to synchronous HTTP or direct simulation if Redis is offline.
 func (s *TelegramService) SendNotification(recipient, message string) (string, error) {
-	// 1. Try Notification Service first if configured or available
+	// 1. Primary: Publish to Redis Stream for asynchronous decoupled processing
+	if s.RedisClient != nil && s.RedisClient.IsAvailable() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		streamName := s.StreamName
+		if streamName == "" {
+			streamName = DefaultNotificationStream
+		}
+
+		_, err := s.RedisClient.XAdd(ctx, &redis.XAddArgs{
+			Stream: streamName,
+			Values: map[string]interface{}{
+				"recipient":    recipient,
+				"message":      message,
+				"channel_type": "TELEGRAM",
+				"parse_mode":   "Markdown",
+				"created_at":   time.Now().UTC().Format(time.RFC3339),
+				"retry_count":  "0",
+			},
+		})
+		if err == nil {
+			return "QUEUED", nil
+		}
+		fmt.Printf("[Notification Stream Warning] Failed to publish to Redis Stream: %v. Falling back to HTTP delivery.\n", err)
+	}
+
+	// 2. Secondary: Fallback to Notification Service HTTP endpoint
 	notifyURL := os.Getenv("NOTIFICATION_SERVICE_URL")
 	if notifyURL == "" {
 		notifyURL = "http://localhost:8085/api/notify"
@@ -119,7 +167,7 @@ func (s *TelegramService) SendNotification(recipient, message string) (string, e
 		}
 	}
 
-	// 2. Fallback to direct Telegram Bot API / local simulation
+	// 3. Fallback to direct Telegram Bot API / local simulation
 	if s.BotToken == "" {
 		fmt.Printf("\n[Telegram Simulation] Sending notification to %s:\n%s\n\n", recipient, message)
 		return "SIMULATED", nil
