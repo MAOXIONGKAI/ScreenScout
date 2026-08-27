@@ -30,9 +30,12 @@ import random
 import argparse
 import urllib.request
 import urllib.error
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 import psycopg2
 from psycopg2.extras import execute_values
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/screenscout")
 CACHE_INVALIDATE_URL = os.getenv("CACHE_INVALIDATE_URL", "http://localhost:8080/api/cache/movies/invalidate")
