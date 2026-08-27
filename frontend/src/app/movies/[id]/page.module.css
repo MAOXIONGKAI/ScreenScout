@@ -148,6 +148,25 @@
   margin-bottom: var(--space-lg);
   flex-wrap: wrap;
   gap: var(--space-sm);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-md);
+  transition: opacity var(--transition-fast);
+}
+
+.schedulesHeadingRow:hover {
+  opacity: 0.9;
+}
+
+.schedulesHeadingLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.schedulesSectionCollapsed .schedulesHeadingRow {
+  margin-bottom: 0;
 }
 
 .sectionTitle {

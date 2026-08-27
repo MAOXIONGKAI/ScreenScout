@@ -52,6 +52,7 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
     rating_counts: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
   });
   const [loading, setLoading] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Form State
   const [rating, setRating] = useState<number>(5);
@@ -153,222 +154,265 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
   const avgRating = reviewsData.average_rating;
 
   return (
-    <section className={styles.reviewsSection}>
-      {/* Header */}
-      <div className={styles.sectionHeader}>
+    <section
+      className={`${styles.reviewsSection} ${
+        isCollapsed ? styles.reviewsSectionCollapsed : ""
+      }`}
+    >
+      {/* Header with collapse toggle */}
+      <div
+        className={styles.sectionHeader}
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsCollapsed(!isCollapsed);
+          }
+        }}
+        title={
+          isCollapsed
+            ? "Click to expand audience reviews"
+            : "Click to collapse audience reviews"
+        }
+        aria-expanded={!isCollapsed}
+      >
         <div className={styles.sectionTitleRow}>
           <h2 className={styles.sectionTitle}>💬 Audience Reviews & Ratings</h2>
           <span className={styles.reviewCountBadge}>
             {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
           </span>
         </div>
-      </div>
 
-      {/* Ratings Breakdown Summary */}
-      {totalReviews > 0 && (
-        <div className={styles.summaryCard}>
-          <div className={styles.scoreCol}>
-            <div className={styles.avgScore}>
-              {avgRating.toFixed(1)}
-              <span className={styles.maxScore}>/5</span>
+        <div className={styles.sectionHeaderRight}>
+          {totalReviews > 0 && (
+            <div className={styles.avgRatingPill}>
+              <span>★</span>
+              <span>{avgRating.toFixed(1)}</span>
             </div>
-            <div className={styles.starDisplay}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span key={star}>
-                  {avgRating >= star ? "★" : avgRating >= star - 0.5 ? "★" : "☆"}
-                </span>
-              ))}
-            </div>
-            <span className={styles.totalReviewsLabel}>
-              Based on {totalReviews} rating{totalReviews === 1 ? "" : "s"}
+          )}
+          <div className={styles.collapseToggle}>
+            <span
+              className={`${styles.chevron} ${
+                isCollapsed ? styles.chevronCollapsed : ""
+              }`}
+            >
+              ▲
             </span>
           </div>
-
-          <div className={styles.breakdownCol}>
-            {[5, 4, 3, 2, 1].map((star) => {
-              const count = reviewsData.rating_counts[star.toString()] || 0;
-              const percent = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
-              return (
-                <div key={star} className={styles.breakdownRow}>
-                  <span className={styles.starLevel}>
-                    {star} <span>★</span>
-                  </span>
-                  <div className={styles.barTrack}>
-                    <div
-                      className={styles.barFill}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                  <span className={styles.countLabel}>{count}</span>
-                </div>
-              );
-            })}
-          </div>
         </div>
-      )}
+      </div>
 
-      {/* Review Composer Form (Logged in vs Guest) */}
-      {user ? (
-        <div className={styles.composerCard}>
-          <div className={styles.composerHeader}>
-            <h3 className={styles.composerTitle}>
-              {userReview ? "✏️ Edit Your Review" : "✨ Write a Review"}
-            </h3>
-            {userReview && (
-              <span className={styles.editingBadge}>You reviewed this</span>
-            )}
-          </div>
+      {!isCollapsed && (
+        <div className={styles.reviewsBody}>
+          {/* Ratings Breakdown Summary */}
+          {totalReviews > 0 && (
+            <div className={styles.summaryCard}>
+              <div className={styles.scoreCol}>
+                <div className={styles.avgScore}>
+                  {avgRating.toFixed(1)}
+                  <span className={styles.maxScore}>/5</span>
+                </div>
+                <div className={styles.starDisplay}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span key={star}>
+                      {avgRating >= star ? "★" : avgRating >= star - 0.5 ? "★" : "☆"}
+                    </span>
+                  ))}
+                </div>
+                <span className={styles.totalReviewsLabel}>
+                  Based on {totalReviews} rating{totalReviews === 1 ? "" : "s"}
+                </span>
+              </div>
 
-          {errorMessage && (
-            <div className={styles.errorBanner}>{errorMessage}</div>
+              <div className={styles.breakdownCol}>
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = reviewsData.rating_counts[star.toString()] || 0;
+                  const percent = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+                  return (
+                    <div key={star} className={styles.breakdownRow}>
+                      <span className={styles.starLevel}>
+                        {star} <span>★</span>
+                      </span>
+                      <div className={styles.barTrack}>
+                        <div
+                          className={styles.barFill}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      <span className={styles.countLabel}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            {/* Interactive Stars */}
-            <div className={styles.ratingPickerRow}>
-              <span className={styles.ratingLabel}>Your Rating:</span>
-              <div
-                className={styles.starsInteractive}
-                onMouseLeave={() => setHoverRating(null)}
-              >
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    className={`${styles.starBtn} ${
-                      activeRating >= star ? styles.starBtnActive : ""
-                    }`}
-                    onClick={() => setRating(star)}
-                    onMouseEnter={() => setHoverRating(star)}
-                    title={`${star} star${star === 1 ? "" : "s"}`}
-                  >
-                    ★
-                  </button>
-                ))}
+          {/* Review Composer Form (Logged in vs Guest) */}
+          {user ? (
+            <div className={styles.composerCard}>
+              <div className={styles.composerHeader}>
+                <h3 className={styles.composerTitle}>
+                  {userReview ? "✏️ Edit Your Review" : "✨ Write a Review"}
+                </h3>
+                {userReview && (
+                  <span className={styles.editingBadge}>You reviewed this</span>
+                )}
               </div>
-              <span className={styles.starMeaning}>
-                {RATING_MEANINGS[activeRating] || ""}
-              </span>
-            </div>
 
-            {/* Content Textarea */}
-            <div className={styles.textareaWrapper}>
-              <textarea
-                className={styles.textarea}
-                placeholder="What did you think of the plot, acting, pacing, and overall experience?"
-                value={content}
-                maxLength={1000}
-                onChange={(e) => setContent(e.target.value)}
-                disabled={submitting}
-              />
-              <div className={styles.charCount}>
-                {content.length} / 1000
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className={styles.formActions}>
-              {userReview && (
-                <button
-                  type="button"
-                  className={styles.deleteOwnBtn}
-                  onClick={() => handleDelete(userReview.id)}
-                  disabled={submitting}
-                >
-                  Delete Review
-                </button>
+              {errorMessage && (
+                <div className={styles.errorBanner}>{errorMessage}</div>
               )}
-              <button
-                type="submit"
-                className={styles.submitBtn}
-                disabled={submitting || !content.trim()}
-              >
-                {submitting
-                  ? "Saving..."
-                  : userReview
-                  ? "Update Review"
-                  : "Post Review"}
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : (
-        <div className={styles.guestCard}>
-          <div className={styles.guestContent}>
-            <span className={styles.guestIcon}>✍️</span>
-            <h3 className={styles.guestTitle}>Share Your Review</h3>
-            <p className={styles.guestText}>
-              Watched this movie? Sign in to rate it and share your thoughts with fellow moviegoers in Singapore!
-            </p>
-            <button
-              type="button"
-              className={styles.guestLoginBtn}
-              onClick={() => openAuthModal("login")}
-            >
-              Sign In to Review
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* Reviews Feed */}
-      {reviewsData.reviews.length > 0 ? (
-        <div className={styles.reviewList}>
-          {reviewsData.reviews.map((rev) => {
-            const isOwnReview = user && user.id === rev.user_id;
-            const initial = rev.username ? rev.username.charAt(0).toUpperCase() : "?";
-
-            return (
-              <div key={rev.id} className={styles.reviewCard}>
-                <div className={styles.reviewCardHeader}>
-                  <div className={styles.authorInfo}>
-                    <div className={styles.avatar}>{initial}</div>
-                    <div className={styles.authorMeta}>
-                      <span className={styles.authorName}>
-                        {rev.username}
-                        {isOwnReview && (
-                          <span className={styles.youBadge}>You</span>
-                        )}
-                      </span>
-                      <span className={styles.reviewDate}>
-                        {formatReviewDate(rev.created_at)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className={styles.reviewHeaderRight}>
-                    <div className={styles.starsPill}>
-                      <span>★</span>
-                      <span>{rev.rating}.0</span>
-                    </div>
-                    {isOwnReview && (
+              <form onSubmit={handleSubmit}>
+                {/* Interactive Stars */}
+                <div className={styles.ratingPickerRow}>
+                  <span className={styles.ratingLabel}>Your Rating:</span>
+                  <div
+                    className={styles.starsInteractive}
+                    onMouseLeave={() => setHoverRating(null)}
+                  >
+                    {[1, 2, 3, 4, 5].map((star) => (
                       <button
+                        key={star}
                         type="button"
-                        className={styles.deleteBtn}
-                        onClick={() => handleDelete(rev.id)}
-                        title="Delete your review"
+                        className={`${styles.starBtn} ${
+                          activeRating >= star ? styles.starBtnActive : ""
+                        }`}
+                        onClick={() => setRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        title={`${star} star${star === 1 ? "" : "s"}`}
                       >
-                        🗑️
+                        ★
                       </button>
-                    )}
+                    ))}
+                  </div>
+                  <span className={styles.starMeaning}>
+                    {RATING_MEANINGS[activeRating] || ""}
+                  </span>
+                </div>
+
+                {/* Content Textarea */}
+                <div className={styles.textareaWrapper}>
+                  <textarea
+                    className={styles.textarea}
+                    placeholder="What did you think of the plot, acting, pacing, and overall experience?"
+                    value={content}
+                    maxLength={1000}
+                    onChange={(e) => setContent(e.target.value)}
+                    disabled={submitting}
+                  />
+                  <div className={styles.charCount}>
+                    {content.length} / 1000
                   </div>
                 </div>
 
-                <p className={styles.reviewContent}>{rev.content}</p>
+                {/* Actions */}
+                <div className={styles.formActions}>
+                  {userReview && (
+                    <button
+                      type="button"
+                      className={styles.deleteOwnBtn}
+                      onClick={() => handleDelete(userReview.id)}
+                      disabled={submitting}
+                    >
+                      Delete Review
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className={styles.submitBtn}
+                    disabled={submitting || !content.trim()}
+                  >
+                    {submitting
+                      ? "Saving..."
+                      : userReview
+                      ? "Update Review"
+                      : "Post Review"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div className={styles.guestCard}>
+              <div className={styles.guestContent}>
+                <span className={styles.guestIcon}>✍️</span>
+                <h3 className={styles.guestTitle}>Share Your Review</h3>
+                <p className={styles.guestText}>
+                  Watched this movie? Sign in to rate it and share your thoughts with fellow moviegoers in Singapore!
+                </p>
+                <button
+                  type="button"
+                  className={styles.guestLoginBtn}
+                  onClick={() => openAuthModal("login")}
+                >
+                  Sign In to Review
+                </button>
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Reviews Feed */}
+          {reviewsData.reviews.length > 0 ? (
+            <div className={styles.reviewList}>
+              {reviewsData.reviews.map((rev) => {
+                const isOwnReview = user && user.id === rev.user_id;
+                const initial = rev.username ? rev.username.charAt(0).toUpperCase() : "?";
+
+                return (
+                  <div key={rev.id} className={styles.reviewCard}>
+                    <div className={styles.reviewCardHeader}>
+                      <div className={styles.authorInfo}>
+                        <div className={styles.avatar}>{initial}</div>
+                        <div className={styles.authorMeta}>
+                          <span className={styles.authorName}>
+                            {rev.username}
+                            {isOwnReview && (
+                              <span className={styles.youBadge}>You</span>
+                            )}
+                          </span>
+                          <span className={styles.reviewDate}>
+                            {formatReviewDate(rev.created_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={styles.reviewHeaderRight}>
+                        <div className={styles.starsPill}>
+                          <span>★</span>
+                          <span>{rev.rating}.0</span>
+                        </div>
+                        {isOwnReview && (
+                          <button
+                            type="button"
+                            className={styles.deleteBtn}
+                            onClick={() => handleDelete(rev.id)}
+                            title="Delete your review"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className={styles.reviewContent}>{rev.content}</p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            !loading && (
+              <div className={styles.emptyReviews}>
+                <div className={styles.emptyIcon}>🍿</div>
+                <h3 className={styles.emptyTitle}>No reviews yet</h3>
+                <p className={styles.emptyText}>
+                  Be the first to share your rating and review for this movie!
+                </p>
+              </div>
+            )
+          )}
         </div>
-      ) : (
-        !loading && (
-          <div className={styles.emptyReviews}>
-            <div className={styles.emptyIcon}>🍿</div>
-            <h3 className={styles.emptyTitle}>No reviews yet</h3>
-            <p className={styles.emptyText}>
-              Be the first to share your rating and review for this movie!
-            </p>
-          </div>
-        )
       )}
     </section>
   );

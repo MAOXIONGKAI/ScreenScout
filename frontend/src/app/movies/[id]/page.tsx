@@ -73,7 +73,8 @@ export default function MovieDetailPage() {
   const [timeFrom, setTimeFrom] = useState("");
   const [timeTo, setTimeTo] = useState("");
 
-  // Collapsible Cinemas State
+  // Collapsible Sections State
+  const [isSchedulesCollapsed, setIsSchedulesCollapsed] = useState(false);
   const [collapsedCinemas, setCollapsedCinemas] = useState<Record<number, boolean>>({});
 
   const toggleCinemaCollapse = (cinemaId: number) => {
@@ -340,173 +341,209 @@ export default function MovieDetailPage() {
         )}
 
         {/* Schedules */}
-        <section className={styles.schedulesSection}>
-          <div className={styles.schedulesHeadingRow}>
-            <h2 className={styles.sectionTitle}>Showtimes</h2>
-            {schedules.length > 0 && (
-              <span className={styles.showtimeCountBadge}>
-                {totalMatchingShowtimes} showtime
-                {totalMatchingShowtimes === 1 ? "" : "s"} available
-              </span>
-            )}
-          </div>
-
-          {/* Showtime Filters Bar */}
-          {schedules.length > 0 && (
-            <div className={styles.filterSection}>
-              {/* Branch Filter */}
-              <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Branch</label>
-                <select
-                  className={styles.select}
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                >
-                  <option value="">All Branches ({branchOptions.length})</option>
-                  {branchOptions.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Date Filter */}
-              <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Date</label>
-                <select
-                  className={styles.select}
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                >
-                  <option value="">All Dates ({dateOptions.length})</option>
-                  {dateOptions.map((d) => (
-                    <option key={d} value={d}>
-                      {formatScheduleDate(d)} ({d})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Showtime From */}
-              <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Showtime From</label>
-                <input
-                  type="time"
-                  className={styles.timeInput}
-                  value={timeFrom}
-                  onChange={(e) => setTimeFrom(e.target.value)}
-                />
-              </div>
-
-              {/* Estimated End Time Until */}
-              <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Showtime Until</label>
-                <input
-                  type="time"
-                  className={styles.timeInput}
-                  value={timeTo}
-                  onChange={(e) => setTimeTo(e.target.value)}
-                />
-              </div>
-
-              {/* Reset Filters Button */}
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  className={styles.resetBtn}
-                  onClick={handleResetFilters}
-                  title="Reset all showtime filters"
-                >
-                  ✕ Reset Filters
-                </button>
+        <section
+          className={`${styles.schedulesSection} ${
+            isSchedulesCollapsed ? styles.schedulesSectionCollapsed : ""
+          }`}
+        >
+          <div
+            className={styles.schedulesHeadingRow}
+            onClick={() => setIsSchedulesCollapsed(!isSchedulesCollapsed)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsSchedulesCollapsed(!isSchedulesCollapsed);
+              }
+            }}
+            title={
+              isSchedulesCollapsed
+                ? "Click to expand showtimes"
+                : "Click to collapse showtimes"
+            }
+            aria-expanded={!isSchedulesCollapsed}
+          >
+            <div className={styles.schedulesHeadingLeft}>
+              <h2 className={styles.sectionTitle}>Showtimes</h2>
+              {schedules.length > 0 && (
+                <span className={styles.showtimeCountBadge}>
+                  {totalMatchingShowtimes} showtime
+                  {totalMatchingShowtimes === 1 ? "" : "s"} available
+                </span>
               )}
             </div>
-          )}
+            <div className={styles.collapseToggle}>
+              <span
+                className={`${styles.chevron} ${
+                  isSchedulesCollapsed ? styles.chevronCollapsed : ""
+                }`}
+              >
+                ▲
+              </span>
+            </div>
+          </div>
 
-          {filteredSchedules.length > 0 ? (
-            filteredSchedules.map((cs) => {
-              const isCollapsed = Boolean(collapsedCinemas[cs.cinema_id]);
-              return (
-                <div
-                  key={cs.cinema_id}
-                  className={`${styles.cinemaSchedule} ${
-                    isCollapsed ? styles.cinemaScheduleCollapsed : ""
-                  }`}
-                >
-                  <div
-                    className={styles.cinemaHeader}
-                    onClick={() => toggleCinemaCollapse(cs.cinema_id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggleCinemaCollapse(cs.cinema_id);
-                      }
-                    }}
-                    title={
-                      isCollapsed
-                        ? "Click to expand showtimes"
-                        : "Click to collapse card"
-                    }
-                    aria-expanded={!isCollapsed}
-                  >
-                    <div className={styles.cinemaHeaderLeft}>
-                      <span className={styles.cinemaName}>{cs.cinema_name}</span>
-                      <span className={styles.cinemaBranch}>{cs.branch}</span>
-                    </div>
-                    <div className={styles.collapseToggle}>
-                      <span
-                        className={`${styles.chevron} ${
-                          isCollapsed ? styles.chevronCollapsed : ""
-                        }`}
-                      >
-                        ▲
-                      </span>
-                    </div>
+          {!isSchedulesCollapsed && (
+            <div className={styles.cinemaBody}>
+              {/* Showtime Filters Bar */}
+              {schedules.length > 0 && (
+                <div className={styles.filterSection}>
+                  {/* Branch Filter */}
+                  <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel}>Branch</label>
+                    <select
+                      className={styles.select}
+                      value={selectedBranch}
+                      onChange={(e) => setSelectedBranch(e.target.value)}
+                    >
+                      <option value="">All Branches ({branchOptions.length})</option>
+                      {branchOptions.map((b) => (
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {!isCollapsed && (
-                    <div className={styles.cinemaBody}>
-                      {cs.dates.map((ds) => (
-                        <div key={ds.date} className={styles.dateGroup}>
-                          <p className={styles.dateLabel}>
-                            {formatScheduleDate(ds.date)}
-                          </p>
-                          <div className={styles.showtimes}>
-                            {ds.showtimes.map((st) => (
-                              <span key={st.id} className={styles.showtimePill}>
-                                {formatTime(st.start_time)}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+                  {/* Date Filter */}
+                  <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel}>Date</label>
+                    <select
+                      className={styles.select}
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                    >
+                      <option value="">All Dates ({dateOptions.length})</option>
+                      {dateOptions.map((d) => (
+                        <option key={d} value={d}>
+                          {formatScheduleDate(d)} ({d})
+                        </option>
                       ))}
-                    </div>
+                    </select>
+                  </div>
+
+                  {/* Showtime From */}
+                  <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel}>Showtime From</label>
+                    <input
+                      type="time"
+                      className={styles.timeInput}
+                      value={timeFrom}
+                      onChange={(e) => setTimeFrom(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Estimated End Time Until */}
+                  <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel}>Showtime Until</label>
+                    <input
+                      type="time"
+                      className={styles.timeInput}
+                      value={timeTo}
+                      onChange={(e) => setTimeTo(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Reset Filters Button */}
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      className={styles.resetBtn}
+                      onClick={handleResetFilters}
+                      title="Reset all showtime filters"
+                    >
+                      ✕ Reset Filters
+                    </button>
                   )}
                 </div>
-              );
-            })
-          ) : (
-            <div className={styles.noSchedules}>
-              <div className={styles.noSchedulesIcon}>
-                {hasActiveFilters ? "🔍" : "📅"}
-              </div>
-              <p className={styles.noSchedulesText}>
-                {hasActiveFilters
-                  ? "No showtimes match the selected branch, date, or time range."
-                  : movie.status === "coming_soon"
-                  ? "Showtimes will be available closer to the release date."
-                  : "No upcoming showtimes available."}
-              </p>
-              {hasActiveFilters && (
-                <button
-                  className={styles.resetFiltersActionBtn}
-                  onClick={handleResetFilters}
-                >
-                  Clear Filters
-                </button>
+              )}
+
+              {filteredSchedules.length > 0 ? (
+                filteredSchedules.map((cs) => {
+                  const isCollapsed = Boolean(collapsedCinemas[cs.cinema_id]);
+                  return (
+                    <div
+                      key={cs.cinema_id}
+                      className={`${styles.cinemaSchedule} ${
+                        isCollapsed ? styles.cinemaScheduleCollapsed : ""
+                      }`}
+                    >
+                      <div
+                        className={styles.cinemaHeader}
+                        onClick={() => toggleCinemaCollapse(cs.cinema_id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleCinemaCollapse(cs.cinema_id);
+                          }
+                        }}
+                        title={
+                          isCollapsed
+                            ? "Click to expand showtimes"
+                            : "Click to collapse card"
+                        }
+                        aria-expanded={!isCollapsed}
+                      >
+                        <div className={styles.cinemaHeaderLeft}>
+                          <span className={styles.cinemaName}>{cs.cinema_name}</span>
+                          <span className={styles.cinemaBranch}>{cs.branch}</span>
+                        </div>
+                        <div className={styles.collapseToggle}>
+                          <span
+                            className={`${styles.chevron} ${
+                              isCollapsed ? styles.chevronCollapsed : ""
+                            }`}
+                          >
+                            ▲
+                          </span>
+                        </div>
+                      </div>
+
+                      {!isCollapsed && (
+                        <div className={styles.cinemaBody}>
+                          {cs.dates.map((ds) => (
+                            <div key={ds.date} className={styles.dateGroup}>
+                              <p className={styles.dateLabel}>
+                                {formatScheduleDate(ds.date)}
+                              </p>
+                              <div className={styles.showtimes}>
+                                {ds.showtimes.map((st) => (
+                                  <span key={st.id} className={styles.showtimePill}>
+                                    {formatTime(st.start_time)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className={styles.noSchedules}>
+                  <div className={styles.noSchedulesIcon}>
+                    {hasActiveFilters ? "🔍" : "📅"}
+                  </div>
+                  <p className={styles.noSchedulesText}>
+                    {hasActiveFilters
+                      ? "No showtimes match the selected branch, date, or time range."
+                      : movie.status === "coming_soon"
+                      ? "Showtimes will be available closer to the release date."
+                      : "No upcoming showtimes available."}
+                  </p>
+                  {hasActiveFilters && (
+                    <button
+                      className={styles.resetFiltersActionBtn}
+                      onClick={handleResetFilters}
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
