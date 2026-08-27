@@ -337,13 +337,40 @@ def main():
 
     # Generate Reviews for target Now Showing movies
     reviews_to_insert = []
+    movie_review_stats = []
 
     for movie in movies_to_populate:
         movie_id, title, genre, release_date = movie
 
-        # Random review count per movie (15 to 45 reviews)
-        num_reviews = random.randint(15, 45)
+        # Determine realistic review count based on days since theatrical release
+        if release_date is None:
+            days_live = random.randint(14, 45)
+        else:
+            days_live = (today - release_date).days
+
+        if days_live <= 0:
+            # Released today (Opening Day): early audience & morning viewers
+            num_reviews = random.randint(2, 6)
+            stage_desc = "Released Today (Opening Day)"
+        elif days_live <= 2:
+            # Released 1-2 days ago (Opening Weekend)
+            num_reviews = random.randint(6, 12)
+            stage_desc = f"Opening Weekend ({days_live}d ago)"
+        elif days_live <= 7:
+            # 1st week in theatres
+            num_reviews = random.randint(13, 24)
+            stage_desc = f"Week 1 ({days_live}d ago)"
+        elif days_live <= 21:
+            # 2-3 weeks in theatres
+            num_reviews = random.randint(25, 42)
+            stage_desc = f"Week 2-3 ({days_live}d ago)"
+        else:
+            # Established / Seasoned run (1+ month)
+            num_reviews = random.randint(45, 75)
+            stage_desc = f"Established ({days_live}d ago)"
+
         selected_users = random.sample(all_users, min(num_reviews, len(all_users)))
+        movie_review_stats.append((title, str(release_date), stage_desc, len(selected_users)))
 
         for u in selected_users:
             user_id, username, user_created_at = u
@@ -366,26 +393,28 @@ def main():
                 rating = 1
                 content = random.choice(REVIEW_TEMPLATES_1_STAR)
 
-            # Review timestamp on/after user created & release date
-            min_time = user_created_at
-            if release_date:
-                release_datetime = datetime(
-                    release_date.year, release_date.month, release_date.day, tzinfo=timezone.utc
-                )
-                if release_datetime > min_time:
-                    min_time = release_datetime
-
             now = datetime.now(timezone.utc)
-            if min_time < now:
-                review_time = min_time + timedelta(
-                    days=random.uniform(0, max(0.1, (now - min_time).days)),
-                    minutes=random.uniform(10, 1400)
-                )
+            if days_live <= 0:
+                # Released today: reviews within the last few hours of today
+                review_time = now - timedelta(minutes=random.randint(15, 600))
             else:
-                review_time = now - timedelta(minutes=random.randint(5, 300))
+                # Distributed across release date up to now
+                release_datetime = (
+                    datetime(release_date.year, release_date.month, release_date.day, tzinfo=timezone.utc)
+                    if release_date
+                    else (now - timedelta(days=days_live))
+                )
+                start_datetime = max(user_created_at, release_datetime)
+                if start_datetime < now:
+                    review_time = start_datetime + timedelta(
+                        days=random.uniform(0, max(0.1, (now - start_datetime).days)),
+                        minutes=random.uniform(10, 1400)
+                    )
+                else:
+                    review_time = now - timedelta(minutes=random.randint(15, 300))
 
             if review_time > now:
-                review_time = now - timedelta(minutes=random.randint(5, 300))
+                review_time = now - timedelta(minutes=random.randint(5, 120))
 
             reviews_to_insert.append((
                 movie_id,
@@ -421,10 +450,10 @@ def main():
     movies_with_reviews_count = cur.fetchone()[0]
 
     # Sample some generated usernames
-    cur.execute("SELECT username FROM users ORDER BY RANDOM() LIMIT 15;")
+    cur.execute("SELECT username FROM users ORDER BY RANDOM() LIMIT 10;")
     sample_users = [r[0] for r in cur.fetchall()]
 
-    print("\n" + "=" * 65)
+    print("\n" + "=" * 70)
     print("🎉 SEED & REPOPULATE COMPLETE!")
     print(f"   • Total Active Users in DB:        {total_users_count:,}")
     print(f"   • Now Showing Movies with Reviews: {movies_with_reviews_count:,} / {len(now_showing_movies):,}")
@@ -433,10 +462,19 @@ def main():
     if avg_rating is not None:
         print(f"   • Average System Rating:           {avg_rating:.2f} / 5.0 ⭐")
     print(f"   • All users password:              Password123!")
+
+    print("\n📊 Sample Movies Release Date vs Review Counts:")
+    # Sort sample by count ascending
+    for title, rel_date, stage, cnt in sorted(movie_review_stats, key=lambda x: x[3])[:8]:
+        print(f"   • {title[:32]:<32} | Rel: {rel_date} ({stage:<24}) -> {cnt:>2} reviews")
+    if len(movie_review_stats) > 8:
+        for title, rel_date, stage, cnt in sorted(movie_review_stats, key=lambda x: x[3])[-4:]:
+            print(f"   • {title[:32]:<32} | Rel: {rel_date} ({stage:<24}) -> {cnt:>2} reviews")
+
     print("\n✨ Sample Varied Usernames:")
     for uname in sample_users:
         print(f"     - {uname}")
-    print("=" * 65 + "\n")
+    print("=" * 70 + "\n")
 
     cur.close()
     conn.close()
