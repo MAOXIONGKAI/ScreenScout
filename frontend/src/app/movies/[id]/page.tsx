@@ -550,7 +550,11 @@ export default function MovieDetailPage() {
         </section>
 
         {/* Reviews & Ratings Section */}
-        <ReviewSection movieId={id} />
+        <ReviewSection
+          movieId={id}
+          isComingSoon={movie.status === "coming_soon"}
+          releaseDate={movie.release_date}
+        />
       </div>
     </div>
   );

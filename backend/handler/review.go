@@ -119,6 +119,19 @@ func (h *ReviewHandler) CreateMovieReview(ctx context.Context, c *app.RequestCon
 		return
 	}
 
+	// Verify if the movie is released (reviews are locked for coming soon movies)
+	if h.MovieRepo != nil {
+		movieDetail, err := h.MovieRepo.GetMovieByID(ctx, movieID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, map[string]string{"error": "movie not found"})
+			return
+		}
+		if movieDetail.Movie.Status == "coming_soon" {
+			c.JSON(http.StatusForbidden, map[string]string{"error": "reviews are locked until the movie is released"})
+			return
+		}
+	}
+
 	rev, err := h.ReviewRepo.CreateOrUpdateReview(ctx, movieID, userID, req.Rating, trimmedContent)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

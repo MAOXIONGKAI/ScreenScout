@@ -109,13 +109,7 @@ WITH movie_status AS (
         m.duration,
         m.created_at,
         CASE
-            WHEN EXISTS (
-                SELECT 1 FROM schedules s
-                WHERE s.movie_id = m.id
-                  AND (s.start_date > CURRENT_DATE
-                       OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
-            ) THEN 'now_showing'
-            WHEN m.release_date > CURRENT_DATE THEN 'coming_soon'
+            WHEN m.release_date IS NOT NULL AND m.release_date > CURRENT_DATE THEN 'coming_soon'
             ELSE 'now_showing'
         END AS status
     FROM movies m
@@ -251,13 +245,7 @@ SELECT m.id, m.title, m.secondary_title, m.description,
        m.director, m.casts, m.genre, m.provider,
        m.release_date::text, m.duration, m.created_at,
        CASE
-           WHEN EXISTS (
-               SELECT 1 FROM schedules s
-               WHERE s.movie_id = m.id
-                 AND (s.start_date > CURRENT_DATE
-                      OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
-           ) THEN 'now_showing'
-           WHEN m.release_date > CURRENT_DATE THEN 'coming_soon'
+           WHEN m.release_date IS NOT NULL AND m.release_date > CURRENT_DATE THEN 'coming_soon'
            ELSE 'now_showing'
        END AS status
 FROM movies m

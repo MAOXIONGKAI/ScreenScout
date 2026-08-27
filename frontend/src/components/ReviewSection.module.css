@@ -589,6 +589,97 @@
 }
 
 /* ============================================
+   Locked Reviews Callout (Coming Soon)
+   ============================================ */
+
+.lockedCard {
+  background: linear-gradient(135deg, rgba(30, 34, 52, 0.4), rgba(18, 20, 30, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  padding: 2.25rem 1.75rem;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+}
+
+.lockedCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #818cf8, transparent);
+}
+
+.lockedContent {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.lockedIcon {
+  font-size: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: rgba(129, 140, 248, 0.1);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: 50%;
+  margin-bottom: 0.25rem;
+}
+
+.lockedTitle {
+  font-size: 1.1875rem;
+  font-weight: 700;
+  color: var(--text-primary, #f0f2f8);
+  margin: 0;
+}
+
+.lockedText {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #a0a6bf);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.lockedDatePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fbbf24;
+  margin-top: 0.25rem;
+}
+
+.lockedBadge {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  color: #fbbf24;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ============================================
    Review List & Cards
    ============================================ */
 

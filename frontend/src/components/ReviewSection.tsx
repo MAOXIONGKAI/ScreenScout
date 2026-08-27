@@ -8,6 +8,8 @@ import styles from "./ReviewSection.module.css";
 
 interface ReviewSectionProps {
   movieId: number;
+  isComingSoon?: boolean;
+  releaseDate?: string;
 }
 
 const RATING_MEANINGS: Record<number, string> = {
@@ -70,7 +72,11 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | stri
   return pages;
 }
 
-export function ReviewSection({ movieId }: ReviewSectionProps) {
+export function ReviewSection({
+  movieId,
+  isComingSoon = false,
+  releaseDate,
+}: ReviewSectionProps) {
   const { user, token, openAuthModal } = useAuth();
 
   const [reviewsData, setReviewsData] = useState<MovieReviewsResponse>({
@@ -173,6 +179,11 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isComingSoon) {
+      setErrorMessage("Reviews are locked until this movie is released.");
+      return;
+    }
+
     if (!token) {
       openAuthModal("login");
       return;
@@ -231,8 +242,13 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
 
   const totalReviews = reviewsData.total;
   const avgRating = reviewsData.average_rating;
-  const totalPages = reviewsData.total_pages || (totalReviews > 0 ? Math.ceil(totalReviews / ITEMS_PER_PAGE) : 0);
-  const pageNumbers = useMemo(() => getPageNumbers(page, totalPages), [page, totalPages]);
+  const totalPages =
+    reviewsData.total_pages ||
+    (totalReviews > 0 ? Math.ceil(totalReviews / ITEMS_PER_PAGE) : 0);
+  const pageNumbers = useMemo(
+    () => getPageNumbers(page, totalPages),
+    [page, totalPages]
+  );
 
   return (
     <section
@@ -261,13 +277,17 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
       >
         <div className={styles.sectionTitleRow}>
           <h2 className={styles.sectionTitle}>💬 Audience Reviews & Ratings</h2>
-          <span className={styles.reviewCountBadge}>
-            {allRatingsCount} {allRatingsCount === 1 ? "review" : "reviews"}
-          </span>
+          {isComingSoon ? (
+            <span className={styles.lockedBadge}>🔒 Coming Soon</span>
+          ) : (
+            <span className={styles.reviewCountBadge}>
+              {allRatingsCount} {allRatingsCount === 1 ? "review" : "reviews"}
+            </span>
+          )}
         </div>
 
         <div className={styles.sectionHeaderRight}>
-          {allRatingsCount > 0 && (
+          {!isComingSoon && allRatingsCount > 0 && (
             <div className={styles.avgRatingPill}>
               <span>★</span>
               <span>{avgRating.toFixed(1)}</span>
@@ -287,350 +307,406 @@ export function ReviewSection({ movieId }: ReviewSectionProps) {
 
       {!isCollapsed && (
         <div className={styles.reviewsBody}>
-          {/* Ratings Breakdown Summary */}
-          {allRatingsCount > 0 && (
-            <div className={styles.summaryCard}>
-              <div className={styles.scoreCol}>
-                <div className={styles.avgScore}>
-                  {avgRating.toFixed(1)}
-                  <span className={styles.maxScore}>/5</span>
-                </div>
-                <div className={styles.starDisplay}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span key={star}>
-                      {avgRating >= star ? "★" : avgRating >= star - 0.5 ? "★" : "☆"}
-                    </span>
-                  ))}
-                </div>
-                <span className={styles.totalReviewsLabel}>
-                  Based on {allRatingsCount} rating{allRatingsCount === 1 ? "" : "s"}
-                </span>
-              </div>
-
-              <div className={styles.breakdownCol}>
-                {[5, 4, 3, 2, 1].map((star) => {
-                  const count = reviewsData.rating_counts[star.toString()] || 0;
-                  const percent = allRatingsCount > 0 ? (count / allRatingsCount) * 100 : 0;
-                  const isFiltered = ratingFilter === star;
-
-                  return (
-                    <div
-                      key={star}
-                      className={`${styles.breakdownRow} ${styles.breakdownRowInteractive} ${
-                        isFiltered ? styles.breakdownRowActive : ""
-                      }`}
-                      onClick={() => handleFilterClick(star)}
-                      title={`Click to filter by ${star} star reviews`}
-                    >
-                      <span className={styles.starLevel}>
-                        {star} <span>★</span>
-                      </span>
-                      <div className={styles.barTrack}>
-                        <div
-                          className={styles.barFill}
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                      <span className={styles.countLabel}>{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Review Composer Form (Logged in vs Guest) */}
-          {user ? (
-            <div className={styles.composerCard}>
-              <div className={styles.composerHeader}>
-                <h3 className={styles.composerTitle}>
-                  {userReview ? "✏️ Edit Your Review" : "✨ Write a Review"}
+          {/* If movie is Coming Soon, display the locked reviews banner */}
+          {isComingSoon ? (
+            <div className={styles.lockedCard}>
+              <div className={styles.lockedContent}>
+                <div className={styles.lockedIcon}>🔒</div>
+                <h3 className={styles.lockedTitle}>
+                  Reviews Locked: Coming Soon
                 </h3>
-                {userReview && (
-                  <span className={styles.editingBadge}>You reviewed this</span>
+                <p className={styles.lockedText}>
+                  This movie has not been released yet. Audience reviews and verified ratings will unlock as soon as screenings begin in theatres!
+                </p>
+                {releaseDate && (
+                  <div className={styles.lockedDatePill}>
+                    <span>📅 Expected Release:</span>
+                    <span>
+                      {new Date(releaseDate).toLocaleDateString("en-SG", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
                 )}
               </div>
-
-              {errorMessage && (
-                <div className={styles.errorBanner}>{errorMessage}</div>
-              )}
-
-              <form onSubmit={handleSubmit}>
-                {/* Interactive Stars */}
-                <div className={styles.ratingPickerRow}>
-                  <span className={styles.ratingLabel}>Your Rating:</span>
-                  <div
-                    className={styles.starsInteractive}
-                    onMouseLeave={() => setHoverRating(null)}
-                  >
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        className={`${styles.starBtn} ${
-                          activeRating >= star ? styles.starBtnActive : ""
-                        }`}
-                        onClick={() => setRating(star)}
-                        onMouseEnter={() => setHoverRating(star)}
-                        title={`${star} star${star === 1 ? "" : "s"}`}
-                      >
-                        ★
-                      </button>
-                    ))}
-                  </div>
-                  <span className={styles.starMeaning}>
-                    {RATING_MEANINGS[activeRating] || ""}
-                  </span>
-                </div>
-
-                {/* Content Textarea */}
-                <div className={styles.textareaWrapper}>
-                  <textarea
-                    className={styles.textarea}
-                    placeholder="What did you think of the plot, acting, pacing, and overall experience?"
-                    value={content}
-                    maxLength={1000}
-                    onChange={(e) => setContent(e.target.value)}
-                    disabled={submitting}
-                  />
-                  <div className={styles.charCount}>
-                    {content.length} / 1000
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className={styles.formActions}>
-                  {userReview && (
-                    <button
-                      type="button"
-                      className={styles.deleteOwnBtn}
-                      onClick={() => handleDelete(userReview.id)}
-                      disabled={submitting}
-                    >
-                      Delete Review
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    className={styles.submitBtn}
-                    disabled={submitting || !content.trim()}
-                  >
-                    {submitting
-                      ? "Saving..."
-                      : userReview
-                      ? "Update Review"
-                      : "Post Review"}
-                  </button>
-                </div>
-              </form>
             </div>
           ) : (
-            <div className={styles.guestCard}>
-              <div className={styles.guestContent}>
-                <span className={styles.guestIcon}>✍️</span>
-                <h3 className={styles.guestTitle}>Share Your Review</h3>
-                <p className={styles.guestText}>
-                  Watched this movie? Sign in to rate it and share your thoughts with fellow moviegoers in Singapore!
-                </p>
-                <button
-                  type="button"
-                  className={styles.guestLoginBtn}
-                  onClick={() => openAuthModal("login")}
-                >
-                  Sign In to Review
-                </button>
-              </div>
-            </div>
-          )}
+            <>
+              {/* Ratings Breakdown Summary */}
+              {allRatingsCount > 0 && (
+                <div className={styles.summaryCard}>
+                  <div className={styles.scoreCol}>
+                    <div className={styles.avgScore}>
+                      {avgRating.toFixed(1)}
+                      <span className={styles.maxScore}>/5</span>
+                    </div>
+                    <div className={styles.starDisplay}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star}>
+                          {avgRating >= star
+                            ? "★"
+                            : avgRating >= star - 0.5
+                            ? "★"
+                            : "☆"}
+                        </span>
+                      ))}
+                    </div>
+                    <span className={styles.totalReviewsLabel}>
+                      Based on {allRatingsCount} rating
+                      {allRatingsCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
 
-          {/* Filters and Sorting Toolbar (Shown if movie has any reviews or filter active) */}
-          {allRatingsCount > 0 && (
-            <div className={styles.toolbar}>
-              {/* Star Rating Filter Pills */}
-              <div className={styles.filterPills}>
-                <button
-                  type="button"
-                  className={`${styles.filterPill} ${
-                    ratingFilter === 0 ? styles.filterPillAllActive : ""
-                  }`}
-                  onClick={() => handleFilterClick(0)}
-                >
-                  All ({allRatingsCount})
-                </button>
-                {[5, 4, 3, 2, 1].map((star) => {
-                  const count = reviewsData.rating_counts[star.toString()] || 0;
-                  const isActive = ratingFilter === star;
-                  return (
+                  <div className={styles.breakdownCol}>
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count =
+                        reviewsData.rating_counts[star.toString()] || 0;
+                      const percent =
+                        allRatingsCount > 0
+                          ? (count / allRatingsCount) * 100
+                          : 0;
+                      const isFiltered = ratingFilter === star;
+
+                      return (
+                        <div
+                          key={star}
+                          className={`${styles.breakdownRow} ${
+                            styles.breakdownRowInteractive
+                          } ${isFiltered ? styles.breakdownRowActive : ""}`}
+                          onClick={() => handleFilterClick(star)}
+                          title={`Click to filter by ${star} star reviews`}
+                        >
+                          <span className={styles.starLevel}>
+                            {star} <span>★</span>
+                          </span>
+                          <div className={styles.barTrack}>
+                            <div
+                              className={styles.barFill}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <span className={styles.countLabel}>{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Review Composer Form (Logged in vs Guest) */}
+              {user ? (
+                <div className={styles.composerCard}>
+                  <div className={styles.composerHeader}>
+                    <h3 className={styles.composerTitle}>
+                      {userReview ? "✏️ Edit Your Review" : "✨ Write a Review"}
+                    </h3>
+                    {userReview && (
+                      <span className={styles.editingBadge}>
+                        You reviewed this
+                      </span>
+                    )}
+                  </div>
+
+                  {errorMessage && (
+                    <div className={styles.errorBanner}>{errorMessage}</div>
+                  )}
+
+                  <form onSubmit={handleSubmit}>
+                    {/* Interactive Stars */}
+                    <div className={styles.ratingPickerRow}>
+                      <span className={styles.ratingLabel}>Your Rating:</span>
+                      <div
+                        className={styles.starsInteractive}
+                        onMouseLeave={() => setHoverRating(null)}
+                      >
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            className={`${styles.starBtn} ${
+                              activeRating >= star ? styles.starBtnActive : ""
+                            }`}
+                            onClick={() => setRating(star)}
+                            onMouseEnter={() => setHoverRating(star)}
+                            title={`${star} star${star === 1 ? "" : "s"}`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                      <span className={styles.starMeaning}>
+                        {RATING_MEANINGS[activeRating] || ""}
+                      </span>
+                    </div>
+
+                    {/* Content Textarea */}
+                    <div className={styles.textareaWrapper}>
+                      <textarea
+                        className={styles.textarea}
+                        placeholder="What did you think of the plot, acting, pacing, and overall experience?"
+                        value={content}
+                        maxLength={1000}
+                        onChange={(e) => setContent(e.target.value)}
+                        disabled={submitting}
+                      />
+                      <div className={styles.charCount}>
+                        {content.length} / 1000
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className={styles.formActions}>
+                      {userReview && (
+                        <button
+                          type="button"
+                          className={styles.deleteOwnBtn}
+                          onClick={() => handleDelete(userReview.id)}
+                          disabled={submitting}
+                        >
+                          Delete Review
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        className={styles.submitBtn}
+                        disabled={submitting || !content.trim()}
+                      >
+                        {submitting
+                          ? "Saving..."
+                          : userReview
+                          ? "Update Review"
+                          : "Post Review"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className={styles.guestCard}>
+                  <div className={styles.guestContent}>
+                    <span className={styles.guestIcon}>✍️</span>
+                    <h3 className={styles.guestTitle}>Share Your Review</h3>
+                    <p className={styles.guestText}>
+                      Watched this movie? Sign in to rate it and share your
+                      thoughts with fellow moviegoers in Singapore!
+                    </p>
                     <button
-                      key={star}
+                      type="button"
+                      className={styles.guestLoginBtn}
+                      onClick={() => openAuthModal("login")}
+                    >
+                      Sign In to Review
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Filters and Sorting Toolbar */}
+              {allRatingsCount > 0 && (
+                <div className={styles.toolbar}>
+                  {/* Star Rating Filter Pills */}
+                  <div className={styles.filterPills}>
+                    <button
                       type="button"
                       className={`${styles.filterPill} ${
-                        isActive ? styles.filterPillActive : ""
+                        ratingFilter === 0 ? styles.filterPillAllActive : ""
                       }`}
-                      onClick={() => handleFilterClick(star)}
+                      onClick={() => handleFilterClick(0)}
                     >
-                      <span>{star} ★</span>
-                      <span>({count})</span>
+                      All ({allRatingsCount})
                     </button>
-                  );
-                })}
-              </div>
-
-              {/* Sorting Selector */}
-              <div className={styles.sortGroup}>
-                <label htmlFor="review-sort" className={styles.sortLabel}>
-                  Sort:
-                </label>
-                <select
-                  id="review-sort"
-                  className={styles.sortSelect}
-                  value={sortBy}
-                  onChange={handleSortChange}
-                >
-                  <option value="newest">🕒 Most Recent</option>
-                  <option value="oldest">⏳ Oldest First</option>
-                  <option value="highest_rating">⭐ Highest Rating</option>
-                  <option value="lowest_rating">📉 Lowest Rating</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* Reviews Feed */}
-          {reviewsData.reviews.length > 0 ? (
-            <>
-              <div className={styles.reviewList}>
-                {reviewsData.reviews.map((rev) => {
-                  const isOwnReview = user && user.id === rev.user_id;
-                  const initial = rev.username ? rev.username.charAt(0).toUpperCase() : "?";
-
-                  return (
-                    <div key={rev.id} className={styles.reviewCard}>
-                      <div className={styles.reviewCardHeader}>
-                        <div className={styles.authorInfo}>
-                          <div className={styles.avatar}>{initial}</div>
-                          <div className={styles.authorMeta}>
-                            <span className={styles.authorName}>
-                              {rev.username}
-                              {isOwnReview && (
-                                <span className={styles.youBadge}>You</span>
-                              )}
-                            </span>
-                            <span className={styles.reviewDate}>
-                              {formatReviewDate(rev.created_at)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className={styles.reviewHeaderRight}>
-                          <div className={styles.starsPill}>
-                            <span>★</span>
-                            <span>{rev.rating}.0</span>
-                          </div>
-                          {isOwnReview && (
-                            <button
-                              type="button"
-                              className={styles.deleteBtn}
-                              onClick={() => handleDelete(rev.id)}
-                              title="Delete your review"
-                            >
-                              🗑️
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <p className={styles.reviewContent}>{rev.content}</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className={styles.paginationRow}>
-                  <div className={styles.paginationInfo}>
-                    Showing <strong>{(page - 1) * ITEMS_PER_PAGE + 1}</strong> –{" "}
-                    <strong>{Math.min(page * ITEMS_PER_PAGE, totalReviews)}</strong> of{" "}
-                    <strong>{totalReviews}</strong> reviews
-                    {ratingFilter > 0 && ` (${ratingFilter}★ filter)`}
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count =
+                        reviewsData.rating_counts[star.toString()] || 0;
+                      const isActive = ratingFilter === star;
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          className={`${styles.filterPill} ${
+                            isActive ? styles.filterPillActive : ""
+                          }`}
+                          onClick={() => handleFilterClick(star)}
+                        >
+                          <span>{star} ★</span>
+                          <span>({count})</span>
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  <div className={styles.paginationControls}>
-                    <button
-                      type="button"
-                      className={styles.pageArrowBtn}
-                      onClick={() => handlePageChange(page - 1)}
-                      disabled={page <= 1}
-                      aria-label="Previous Page"
+                  {/* Sorting Selector */}
+                  <div className={styles.sortGroup}>
+                    <label htmlFor="review-sort" className={styles.sortLabel}>
+                      Sort:
+                    </label>
+                    <select
+                      id="review-sort"
+                      className={styles.sortSelect}
+                      value={sortBy}
+                      onChange={handleSortChange}
                     >
-                      ← Previous
-                    </button>
-
-                    <div className={styles.pageNumbers}>
-                      {pageNumbers.map((p, idx) => {
-                        if (p === "...") {
-                          return (
-                            <span key={`ellipsis-${idx}`} className={styles.pageEllipsis}>
-                              …
-                            </span>
-                          );
-                        }
-                        const pageNum = Number(p);
-                        const isActive = pageNum === page;
-                        return (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            className={`${styles.pageNumberBtn} ${
-                              isActive ? styles.pageNumberBtnActive : ""
-                            }`}
-                            onClick={() => handlePageChange(pageNum)}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <button
-                      type="button"
-                      className={styles.pageArrowBtn}
-                      onClick={() => handlePageChange(page + 1)}
-                      disabled={page >= totalPages}
-                      aria-label="Next Page"
-                    >
-                      Next →
-                    </button>
+                      <option value="newest">🕒 Most Recent</option>
+                      <option value="oldest">⏳ Oldest First</option>
+                      <option value="highest_rating">⭐ Highest Rating</option>
+                      <option value="lowest_rating">📉 Lowest Rating</option>
+                    </select>
                   </div>
                 </div>
               )}
-            </>
-          ) : (
-            !loading && (
-              <div className={styles.emptyReviews}>
-                <div className={styles.emptyIcon}>🍿</div>
-                <h3 className={styles.emptyTitle}>
-                  {ratingFilter > 0
-                    ? `No ${ratingFilter}-star reviews found`
-                    : "No reviews yet"}
-                </h3>
-                <p className={styles.emptyText}>
-                  {ratingFilter > 0 ? (
-                    <button
-                      type="button"
-                      className={styles.filterPillAllActive}
-                      style={{ marginTop: "0.5rem", border: "none", cursor: "pointer" }}
-                      onClick={() => handleFilterClick(0)}
-                    >
-                      Clear {ratingFilter}★ Filter
-                    </button>
-                  ) : (
-                    "Be the first to share your rating and review for this movie!"
+
+              {/* Reviews Feed */}
+              {reviewsData.reviews.length > 0 ? (
+                <>
+                  <div className={styles.reviewList}>
+                    {reviewsData.reviews.map((rev) => {
+                      const isOwnReview = user && user.id === rev.user_id;
+                      const initial = rev.username
+                        ? rev.username.charAt(0).toUpperCase()
+                        : "?";
+
+                      return (
+                        <div key={rev.id} className={styles.reviewCard}>
+                          <div className={styles.reviewCardHeader}>
+                            <div className={styles.authorInfo}>
+                              <div className={styles.avatar}>{initial}</div>
+                              <div className={styles.authorMeta}>
+                                <span className={styles.authorName}>
+                                  {rev.username}
+                                  {isOwnReview && (
+                                    <span className={styles.youBadge}>
+                                      You
+                                    </span>
+                                  )}
+                                </span>
+                                <span className={styles.reviewDate}>
+                                  {formatReviewDate(rev.created_at)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className={styles.reviewHeaderRight}>
+                              <div className={styles.starsPill}>
+                                <span>★</span>
+                                <span>{rev.rating}.0</span>
+                              </div>
+                              {isOwnReview && (
+                                <button
+                                  type="button"
+                                  className={styles.deleteBtn}
+                                  onClick={() => handleDelete(rev.id)}
+                                  title="Delete your review"
+                                >
+                                  🗑️
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <p className={styles.reviewContent}>{rev.content}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className={styles.paginationRow}>
+                      <div className={styles.paginationInfo}>
+                        Showing{" "}
+                        <strong>{(page - 1) * ITEMS_PER_PAGE + 1}</strong> –{" "}
+                        <strong>
+                          {Math.min(page * ITEMS_PER_PAGE, totalReviews)}
+                        </strong>{" "}
+                        of <strong>{totalReviews}</strong> reviews
+                        {ratingFilter > 0 && ` (${ratingFilter}★ filter)`}
+                      </div>
+
+                      <div className={styles.paginationControls}>
+                        <button
+                          type="button"
+                          className={styles.pageArrowBtn}
+                          onClick={() => handlePageChange(page - 1)}
+                          disabled={page <= 1}
+                          aria-label="Previous Page"
+                        >
+                          ← Previous
+                        </button>
+
+                        <div className={styles.pageNumbers}>
+                          {pageNumbers.map((p, idx) => {
+                            if (p === "...") {
+                              return (
+                                <span
+                                  key={`ellipsis-${idx}`}
+                                  className={styles.pageEllipsis}
+                                >
+                                  …
+                                </span>
+                              );
+                            }
+                            const pageNum = Number(p);
+                            const isActive = pageNum === page;
+                            return (
+                              <button
+                                key={pageNum}
+                                type="button"
+                                className={`${styles.pageNumberBtn} ${
+                                  isActive ? styles.pageNumberBtnActive : ""
+                                }`}
+                                onClick={() => handlePageChange(pageNum)}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          type="button"
+                          className={styles.pageArrowBtn}
+                          onClick={() => handlePageChange(page + 1)}
+                          disabled={page >= totalPages}
+                          aria-label="Next Page"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </p>
-              </div>
-            )
+                </>
+              ) : (
+                !loading && (
+                  <div className={styles.emptyReviews}>
+                    <div className={styles.emptyIcon}>🍿</div>
+                    <h3 className={styles.emptyTitle}>
+                      {ratingFilter > 0
+                        ? `No ${ratingFilter}-star reviews found`
+                        : "No reviews yet"}
+                    </h3>
+                    <p className={styles.emptyText}>
+                      {ratingFilter > 0 ? (
+                        <button
+                          type="button"
+                          className={styles.filterPillAllActive}
+                          style={{
+                            marginTop: "0.5rem",
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => handleFilterClick(0)}
+                        >
+                          Clear {ratingFilter}★ Filter
+                        </button>
+                      ) : (
+                        "Be the first to share your rating and review for this movie!"
+                      )}
+                    </p>
+                  </div>
+                )
+              )}
+            </>
           )}
         </div>
       )}
