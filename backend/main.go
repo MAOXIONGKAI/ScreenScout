@@ -71,6 +71,7 @@ func main() {
 	cinemaRepo := repo.NewCinemaRepo(pool)
 	userRepo := repo.NewUserRepo(pool)
 	subRepo := repo.NewSubscriptionRepo(pool)
+	reviewRepo := repo.NewReviewRepo(pool)
 
 	// Ensure tables exist
 	if err := userRepo.EnsureUserTable(ctx); err != nil {
@@ -85,6 +86,12 @@ func main() {
 		fmt.Println("✓ Subscription tables verified")
 	}
 
+	if err := reviewRepo.EnsureReviewTable(ctx); err != nil {
+		log.Printf("Warning: ensure review table failed: %v", err)
+	} else {
+		fmt.Println("✓ Reviews table verified")
+	}
+
 	// Initialize services & handlers
 	tgService := service.NewTelegramService()
 	tgService.SetRedisClient(redisClient)
@@ -92,6 +99,7 @@ func main() {
 	cinemaHandler := handler.NewCinemaHandler(cinemaRepo)
 	authHandler := handler.NewAuthHandler(userRepo)
 	subHandler := handler.NewSubscriptionHandler(subRepo, userRepo, tgService)
+	reviewHandler := handler.NewReviewHandler(reviewRepo, movieRepo)
 
 	// Create Hertz server
 	h := server.Default(server.WithHostPorts(":8080"))
@@ -112,6 +120,11 @@ func main() {
 		// Movie routes
 		api.GET("/movies", movieHandler.ListMovies)
 		api.GET("/movies/:id", movieHandler.GetMovie)
+
+		// Movie review routes
+		api.GET("/movies/:id/reviews", reviewHandler.ListMovieReviews)
+		api.POST("/movies/:id/reviews", middleware.AuthRequired(), reviewHandler.CreateMovieReview)
+		api.DELETE("/movies/:id/reviews/:review_id", middleware.AuthRequired(), reviewHandler.DeleteMovieReview)
 
 		// Cache routes
 		cacheGroup := api.Group("/cache")

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { MovieDetail } from "@/lib/types";
 import { fetchMovieById } from "@/lib/api";
+import { ReviewSection } from "@/components/ReviewSection";
 import styles from "./page.module.css";
 
 function formatDuration(minutes: number): string {
@@ -510,6 +511,9 @@ export default function MovieDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Reviews & Ratings Section */}
+        <ReviewSection movieId={id} />
       </div>
     </div>
   );

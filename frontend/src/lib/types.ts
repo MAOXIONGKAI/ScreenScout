@@ -118,3 +118,29 @@ export interface Subscription {
   created_at: string;
   updated_at: string;
 }
+
+// Review represents a user review and rating for a movie
+export interface Review {
+  id: number;
+  movie_id: number;
+  user_id: number;
+  username: string;
+  rating: number; // 1 - 5
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// CreateReviewPayload for POST /api/movies/:id/reviews
+export interface CreateReviewPayload {
+  rating: number;
+  content: string;
+}
+
+// MovieReviewsResponse wraps reviews list and aggregate metrics
+export interface MovieReviewsResponse {
+  reviews: Review[];
+  total: number;
+  average_rating: number;
+  rating_counts: Record<string, number>;
+}

@@ -8,6 +8,9 @@ import {
   User,
   NotificationChannel,
   Subscription,
+  Review,
+  CreateReviewPayload,
+  MovieReviewsResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -220,3 +223,57 @@ export async function toggleSubscription(
   }
   return data;
 }
+
+// Movie Reviews API
+export async function fetchMovieReviews(
+  movieId: number
+): Promise<MovieReviewsResponse> {
+  const res = await fetch(`${API_BASE}/api/movies/${movieId}/reviews`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch movie reviews");
+  }
+  return res.json();
+}
+
+export async function submitMovieReview(
+  token: string,
+  movieId: number,
+  payload: CreateReviewPayload
+): Promise<Review> {
+  const res = await fetch(`${API_BASE}/api/movies/${movieId}/reviews`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to submit review");
+  }
+  return data;
+}
+
+export async function deleteMovieReview(
+  token: string,
+  movieId: number,
+  reviewId: number
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/movies/${movieId}/reviews/${reviewId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to delete review");
+  }
+}
+
