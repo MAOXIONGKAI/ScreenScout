@@ -108,7 +108,14 @@ func main() {
 
 	// CORS middleware — allow Next.js frontend
 	h.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowOrigins: []string{
+			"http://localhost:3000",
+			"http://127.0.0.1:3000",
+			"https://www.screenscout.live",
+			"https://screenscout.live",
+			"http://www.screenscout.live",
+			"http://screenscout.live",
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length", "X-Cache"},

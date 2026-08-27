@@ -1,6 +1,8 @@
 # Multi-stage build for Go Hertz Backend API
-FROM golang:1.22-alpine AS builder
+FROM golang:alpine AS builder
 WORKDIR /app
+
+ENV GOTOOLCHAIN=auto
 
 RUN apk add --no-cache git gcc musl-dev
 

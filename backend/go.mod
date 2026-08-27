@@ -3,15 +3,16 @@ module github.com/maoxiongkai/screenscout-backend
 go 1.25.0
 
 require (
+	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/cloudwego/hertz v0.10.6
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/hertz-contrib/cors v0.1.0
 	github.com/jackc/pgx/v5 v5.7.4
+	github.com/redis/go-redis/v9 v9.22.0
 	golang.org/x/crypto v0.55.0
 )
 
 require (
-	github.com/alicebob/miniredis/v2 v2.38.0 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.2 // indirect
 	github.com/bytedance/sonic/loader v0.5.2 // indirect
@@ -24,7 +25,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
-	github.com/redis/go-redis/v9 v9.22.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect

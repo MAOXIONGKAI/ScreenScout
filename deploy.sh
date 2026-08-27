@@ -29,10 +29,12 @@ POSTGRES_PASSWORD=$(openssl rand -hex 16)
 JWT_SECRET=$(openssl rand -hex 32)
 TELEGRAM_BOT_TOKEN=8741735560:AAFa9GjTfZf2u11aZ9oK8L7M6N5P4Q3R2S1
 NOTIFICATION_STREAM_NAME=screenscout:notifications:stream
+NEXT_PUBLIC_API_URL=https://www.screenscout.live
+FRONTEND_URL=https://www.screenscout.live
 CACHE_MOVIE_LIST_TTL=5m
 CACHE_MOVIE_DETAIL_TTL=10m
 EOF
-    echo "✓ Generated secure random credentials in .env"
+    echo "✓ Generated secure production configuration in .env (Domain: www.screenscout.live)"
 fi
 
 # 3. Build and launch production Docker containers

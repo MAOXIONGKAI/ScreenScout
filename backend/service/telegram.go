@@ -53,12 +53,24 @@ func (s *TelegramService) SetRedisClient(c *cache.Client) {
 	s.RedisClient = c
 }
 
+func getFrontendBaseURL() string {
+	baseURL := os.Getenv("FRONTEND_URL")
+	if baseURL == "" {
+		baseURL = os.Getenv("NEXT_PUBLIC_API_URL")
+	}
+	if baseURL == "" {
+		baseURL = "https://www.screenscout.live"
+	}
+	return strings.TrimRight(baseURL, "/")
+}
+
 // FormatMovieAlertMessage formats a rich notification text for single or multiple matched movies.
 func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) string {
 	if len(movies) == 0 {
 		return ""
 	}
 
+	base := getFrontendBaseURL()
 	var sb strings.Builder
 	sb.WriteString("🎬 *ScreenScout Movie Alert!*\n\n")
 	sb.WriteString(fmt.Sprintf("Hello @%s,\n", username))
@@ -79,7 +91,7 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 		sb.WriteString(fmt.Sprintf("📌 Status: %s\n", statusStr))
 		sb.WriteString(fmt.Sprintf("🏢 Cinema: %s\n", providerStr))
 		sb.WriteString(fmt.Sprintf("📅 Release Date: %s\n\n", m.ReleaseDate))
-		sb.WriteString(fmt.Sprintf("🔗 Check showtimes: http://localhost:3000/movies/%d", m.ID))
+		sb.WriteString(fmt.Sprintf("🔗 Check showtimes: %s/movies/%d", base, m.ID))
 	} else {
 		sb.WriteString(fmt.Sprintf("Your tracked movie keyword *\"%s\"* matched *%d* movies!\n\n", movieQuery, len(movies)))
 		for i, m := range movies {
@@ -94,7 +106,7 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 
 			sb.WriteString(fmt.Sprintf("%d. 🎥 *%s*\n", i+1, m.Title))
 			sb.WriteString(fmt.Sprintf("   🏢 %s • 📌 %s\n", providerStr, statusStr))
-			sb.WriteString(fmt.Sprintf("   📅 %s • 🔗 http://localhost:3000/movies/%d\n\n", m.ReleaseDate, m.ID))
+			sb.WriteString(fmt.Sprintf("   📅 %s • 🔗 %s/movies/%d\n\n", m.ReleaseDate, base, m.ID))
 		}
 	}
 
