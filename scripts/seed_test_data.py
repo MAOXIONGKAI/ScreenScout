@@ -25,6 +25,7 @@ Key Features:
 import os
 import sys
 import re
+import json
 import random
 import argparse
 import urllib.request
@@ -422,9 +423,243 @@ def invalidate_backend_cache():
         pass
 
 
+POPULAR_UPCOMING_TITLES = [
+    "Avatar: Fire and Ash", "Avengers: Doomsday", "Spider-Man: Beyond the Spider-Verse",
+    "Batman: Part II", "Wicked: For Good", "Toy Story 5", "Shrek 5", "Dune: Part Three",
+    "Tron: Ares", "Zootopia 2", "Fantastic Four: First Steps", "Blade", "Superman",
+    "Jurassic World Rebirth", "Fast XI", "Star Wars: New Jedi Order", "How to Train Your Dragon",
+    "Captain America: Brave New World", "Moana 2", "Mufasa: The Lion King", "Kraven the Hunter",
+    "Paddington in Peru", "Sonic the Hedgehog 3", "Nosferatu", "Mission: Impossible - The Final Reckoning",
+    "Interstellar 10th Anniversary", "Demon Slayer: Infinity Castle", "Chainsaw Man - The Movie"
+]
+
+GENRE_THEME_QUERIES = [
+    "IMAX 3D", "Anime", "Marvel", "DC Universe", "Studio Ghibli", "Disney Animation",
+    "Christopher Nolan", "Horror Night", "Korean Cinema", "Japanese Film Festival"
+]
+
+
+def seed_tracking_tasks(cur, conn, all_users, all_movies_rows, incremental=False):
+    print("\n🔔 Seeding realistic screening tracking tasks & notification channels across all users...")
+
+    # 1. Ensure Schema
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS notification_channels (
+        id                  BIGINT PRIMARY KEY,
+        user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        channel_type        VARCHAR(20) NOT NULL CHECK (
+                                channel_type IN ('TELEGRAM', 'WECHAT', 'WHATSAPP', 'EMAIL', 'DISCORD')
+                            ),
+        channel_user_id     VARCHAR(255) NOT NULL,
+        is_enabled          BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore'),
+        updated_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore'),
+        UNIQUE (user_id, channel_type)
+    );
+    CREATE SEQUENCE IF NOT EXISTS notification_channels_id_seq START WITH 1 INCREMENT BY 1;
+    ALTER TABLE notification_channels ALTER COLUMN id SET DEFAULT nextval('notification_channels_id_seq');
+    CREATE INDEX IF NOT EXISTS idx_notification_channels_user ON notification_channels(user_id);
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+        id                  BIGINT PRIMARY KEY,
+        user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        movie_query         VARCHAR(255) NOT NULL,
+        is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+        matched_movie_id    BIGINT REFERENCES movies(id) ON DELETE SET NULL,
+        matched_movie_title VARCHAR(255),
+        matched_movies      JSONB DEFAULT '[]'::jsonb,
+        triggered_at        TIMESTAMPTZ,
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore'),
+        updated_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')
+    );
+    CREATE SEQUENCE IF NOT EXISTS subscriptions_id_seq START WITH 1 INCREMENT BY 1;
+    ALTER TABLE subscriptions ALTER COLUMN id SET DEFAULT nextval('subscriptions_id_seq');
+    CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_subscriptions_active ON subscriptions(is_active);
+
+    CREATE TABLE IF NOT EXISTS notification_logs (
+        id                  BIGINT PRIMARY KEY,
+        subscription_id     BIGINT REFERENCES subscriptions(id) ON DELETE CASCADE,
+        user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        channel_type        VARCHAR(20) NOT NULL,
+        recipient           VARCHAR(255) NOT NULL,
+        message             TEXT NOT NULL,
+        status              VARCHAR(20) NOT NULL DEFAULT 'SENT',
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')
+    );
+    CREATE SEQUENCE IF NOT EXISTS notification_logs_id_seq START WITH 1 INCREMENT BY 1;
+    ALTER TABLE notification_logs ALTER COLUMN id SET DEFAULT nextval('notification_logs_id_seq');
+    CREATE INDEX IF NOT EXISTS idx_notification_logs_user ON notification_logs(user_id);
+    """)
+    conn.commit()
+
+    if not incremental:
+        cur.execute("TRUNCATE TABLE notification_logs, subscriptions, notification_channels RESTART IDENTITY CASCADE;")
+        conn.commit()
+
+    # 2. Build movie lookup map
+    today = datetime.now(timezone.utc).date()
+    movies_by_id = {}
+    db_movie_titles = []
+    for row in all_movies_rows:
+        m_id, m_title, m_genre, m_rel_date, m_dir, m_casts, m_desc = row[:7]
+        m_provider = row[7] if len(row) > 7 else "GV"
+        m_poster = row[8] if len(row) > 8 else None
+
+        status = "now_showing" if (m_rel_date is None or m_rel_date <= today) else "coming_soon"
+        movies_by_id[m_id] = {
+            "id": m_id,
+            "title": m_title,
+            "provider": m_provider,
+            "status": status,
+            "release_date": str(m_rel_date) if m_rel_date else None,
+            "poster_url": m_poster or ""
+        }
+        db_movie_titles.append((m_id, m_title))
+
+    clean_titles = [m_title for _, m_title in db_movie_titles]
+
+    # 3. Notification Channels for users
+    channels_to_insert = []
+    for user_id, username, user_created_at in all_users:
+        clean_handle = username.lower().replace(".", "_").replace("-", "_")
+        tg_handle = f"@{clean_handle}"
+        channels_to_insert.append((
+            user_id,
+            "TELEGRAM",
+            tg_handle,
+            True,
+            user_created_at,
+            user_created_at
+        ))
+
+    insert_channels_query = """
+    INSERT INTO notification_channels (user_id, channel_type, channel_user_id, is_enabled, created_at, updated_at)
+    VALUES %s
+    ON CONFLICT (user_id, channel_type) DO UPDATE SET channel_user_id = EXCLUDED.channel_user_id, updated_at = EXCLUDED.updated_at;
+    """
+    execute_values(cur, insert_channels_query, channels_to_insert)
+    conn.commit()
+    print(f"✓ Provisioned {len(channels_to_insert):,} Telegram notification channels.")
+
+    # 4. Subscriptions & Tracking Tasks
+    subscriptions_to_insert = []
+    now = datetime.now(timezone.utc)
+
+    admin_user = next((u for u in all_users if u[1] == "admin"), None)
+    admin_id = admin_user[0] if admin_user else None
+
+    for user_id, username, user_created_at in all_users:
+        if user_id == admin_id:
+            task_specs = [
+                ("Spider-Man", True),
+                ("Harry Potter", True),
+                ("Avatar: Fire and Ash", False),
+                ("Wicked: For Good", False)
+            ]
+        else:
+            num_tasks = random.choices([1, 2, 3, 4], weights=[40, 35, 18, 7])[0]
+            pool = clean_titles + POPULAR_UPCOMING_TITLES + GENRE_THEME_QUERIES
+            selected_queries = random.sample(pool, min(num_tasks, len(pool)))
+            task_specs = [(q, None) for q in selected_queries]
+
+        for query, force_trigger in task_specs:
+            matched_items = []
+            q_lower = query.lower()
+            for m_id, m_data in movies_by_id.items():
+                if q_lower in m_data["title"].lower() or any(w in m_data["title"].lower() for w in q_lower.split() if len(w) > 3):
+                    matched_items.append(m_data)
+
+            start_time = max(user_created_at, now - timedelta(days=60))
+            task_created_at = start_time + timedelta(
+                days=random.uniform(0, max(0.1, (now - start_time).days)),
+                minutes=random.uniform(0, 1400)
+            )
+            if task_created_at > now:
+                task_created_at = now - timedelta(minutes=random.randint(10, 180))
+
+            if matched_items and (force_trigger is True or (force_trigger is None and random.random() < 0.65)):
+                top_match = matched_items[0]
+                matched_id = top_match["id"]
+                matched_title = top_match["title"]
+                matched_json = json.dumps(matched_items[:3])
+                triggered_time = task_created_at + timedelta(
+                    days=random.uniform(0, max(0.1, (now - task_created_at).days)),
+                    minutes=random.uniform(10, 300)
+                )
+                if triggered_time > now:
+                    triggered_time = now - timedelta(minutes=random.randint(5, 60))
+
+                is_active = random.random() < 0.85
+                subscriptions_to_insert.append((
+                    user_id,
+                    query,
+                    is_active,
+                    matched_id,
+                    matched_title,
+                    matched_json,
+                    triggered_time,
+                    task_created_at,
+                    triggered_time
+                ))
+            else:
+                subscriptions_to_insert.append((
+                    user_id,
+                    query,
+                    True,
+                    None,
+                    None,
+                    '[]',
+                    None,
+                    task_created_at,
+                    task_created_at
+                ))
+
+    insert_sub_query = """
+    INSERT INTO subscriptions (user_id, movie_query, is_active, matched_movie_id, matched_movie_title, matched_movies, triggered_at, created_at, updated_at)
+    VALUES %s;
+    """
+    execute_values(cur, insert_sub_query, subscriptions_to_insert)
+    conn.commit()
+    print(f"✓ Created {len(subscriptions_to_insert):,} movie tracking tasks across all users.")
+
+    # 5. Notification Logs for Triggered Subscriptions
+    cur.execute("""
+        SELECT s.id, s.user_id, s.movie_query, s.matched_movie_title, s.triggered_at, u.username, nc.channel_user_id
+        FROM subscriptions s
+        JOIN users u ON u.id = s.user_id
+        LEFT JOIN notification_channels nc ON nc.user_id = s.user_id AND nc.channel_type = 'TELEGRAM'
+        WHERE s.triggered_at IS NOT NULL;
+    """)
+    triggered_subs = cur.fetchall()
+
+    logs_to_insert = []
+    for sub_id, u_id, m_query, m_title, trig_at, uname, chan_id in triggered_subs:
+        recipient = chan_id or f"@{uname}"
+        msg = f"🎬 ScreenScout Screening Alert!\n\nHey {uname}! Screenings for your tracked movie \"{m_query}\" are now live in Singapore cinemas!\n\n📍 Matched: {m_title or m_query}\n🎟️ Bookings are now open across participating locations."
+        logs_to_insert.append((
+            sub_id,
+            u_id,
+            "TELEGRAM",
+            recipient,
+            msg,
+            "SENT",
+            trig_at
+        ))
+
+    if logs_to_insert:
+        insert_logs_query = """
+        INSERT INTO notification_logs (subscription_id, user_id, channel_type, recipient, message, status, created_at)
+        VALUES %s;
+        """
+        execute_values(cur, insert_logs_query, logs_to_insert)
+        conn.commit()
+        print(f"✓ Generated {len(logs_to_insert):,} realistic Telegram notification alert logs.")
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Populate rich-variety demo users and context-aware reviews for now-showing movies."
+        description="Populate rich-variety demo users, context-aware reviews, and tracking tasks."
     )
     parser.add_argument(
         "--incremental",
@@ -438,9 +673,9 @@ def main():
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
 
-    # 1. Fetch existing movies with full metadata (title, genre, release_date, director, casts, description)
+    # 1. Fetch existing movies with full metadata (title, genre, release_date, director, casts, description, provider, poster_url)
     cur.execute("""
-        SELECT id, title, genre, release_date, director, casts, description
+        SELECT id, title, genre, release_date, director, casts, description, provider, poster_url
         FROM movies
         ORDER BY id;
     """)
@@ -518,43 +753,38 @@ def main():
     if args.incremental:
         cur.execute("SELECT DISTINCT movie_id FROM reviews;")
         reviewed_movie_ids = set(row[0] for row in cur.fetchall())
-        movies_to_populate = [m for m in now_showing_movies if m[0] not in reviewed_movie_ids]
-        print(f"ℹ️  Incremental Mode: Populating {len(movies_to_populate)} unreviewed Now Showing movie(s)...")
+        target_movies = [m for m in now_showing_movies if m[0] not in reviewed_movie_ids]
+        print(f"✓ Found {len(target_movies)} unreviewed movies to seed (incremental mode).")
     else:
-        movies_to_populate = now_showing_movies
-        print(f"🍿 Populating fresh context-aware reviews across all {len(movies_to_populate)} Now Showing movies...")
+        target_movies = now_showing_movies
 
-    # Generate Reviews for target Now Showing movies
     reviews_to_insert = []
     movie_review_stats = []
 
-    for movie in movies_to_populate:
-        movie_id, title, genre, release_date, director, casts, description = movie
+    print("\n📝 Generating realistic, context-aware reviews for now-showing movies...")
+    for movie in target_movies:
+        movie_id, title, genre, release_date, director, casts, description = movie[:7]
 
-        # Determine realistic review count based on days since theatrical release
-        if release_date is None:
-            days_live = random.randint(14, 45)
-        else:
+        # Calculate days since release
+        if release_date:
             days_live = (today - release_date).days
+        else:
+            days_live = random.randint(14, 60)
 
+        # Release-date weighted review distribution
         if days_live <= 0:
-            # Released today (Opening Day): early audience & morning viewers
             num_reviews = random.randint(2, 6)
-            stage_desc = "Released Today (Opening Day)"
+            stage_desc = f"Opening Day ({days_live}d)"
         elif days_live <= 2:
-            # Released 1-2 days ago (Opening Weekend)
             num_reviews = random.randint(6, 12)
             stage_desc = f"Opening Weekend ({days_live}d ago)"
         elif days_live <= 7:
-            # 1st week in theatres
             num_reviews = random.randint(13, 24)
             stage_desc = f"Week 1 ({days_live}d ago)"
         elif days_live <= 21:
-            # 2-3 weeks in theatres
             num_reviews = random.randint(25, 42)
             stage_desc = f"Week 2-3 ({days_live}d ago)"
         else:
-            # Established / Seasoned run (1+ month)
             num_reviews = random.randint(45, 75)
             stage_desc = f"Established ({days_live}d ago)"
 
@@ -564,7 +794,6 @@ def main():
         for u in selected_users:
             user_id, username, user_created_at = u
 
-            # Realistic rating distribution: 5★ (42%), 4★ (36%), 3★ (15%), 2★ (5%), 1★ (2%)
             rand_val = random.random()
             if rand_val < 0.42:
                 rating = 5
@@ -577,7 +806,6 @@ def main():
             else:
                 rating = 1
 
-            # Generate contextual review referencing synopsis, casts, director, genre, title
             content = generate_contextual_review(
                 title=title,
                 genre=genre or "",
@@ -589,10 +817,8 @@ def main():
 
             now = datetime.now(timezone.utc)
             if days_live <= 0:
-                # Released today: reviews within the last few hours of today
                 review_time = now - timedelta(minutes=random.randint(15, 600))
             else:
-                # Distributed across release date up to now
                 release_datetime = (
                     datetime(release_date.year, release_date.month, release_date.day, tzinfo=timezone.utc)
                     if release_date
@@ -632,6 +858,9 @@ def main():
     cur.execute("DELETE FROM reviews WHERE movie_id IN (SELECT id FROM movies WHERE release_date > CURRENT_DATE);")
     conn.commit()
 
+    # 4. Seed Subscriptions / Tracking Tasks
+    seed_tracking_tasks(cur, conn, all_users, all_movies, args.incremental)
+
     # Invalidate cache
     invalidate_backend_cache()
 
@@ -643,9 +872,24 @@ def main():
     cur.execute("SELECT COUNT(DISTINCT movie_id) FROM reviews;")
     movies_with_reviews_count = cur.fetchone()[0]
 
+    cur.execute("SELECT COUNT(*), COUNT(CASE WHEN is_active THEN 1 END), COUNT(CASE WHEN triggered_at IS NOT NULL THEN 1 END) FROM subscriptions;")
+    total_subs, active_subs, triggered_subs_cnt = cur.fetchone()
+
+    cur.execute("SELECT COUNT(*) FROM notification_logs;")
+    total_notif_logs = cur.fetchone()[0]
+
     # Sample some generated usernames
     cur.execute("SELECT username FROM users ORDER BY RANDOM() LIMIT 10;")
     sample_users = [r[0] for r in cur.fetchall()]
+
+    # Sample admin subscriptions
+    cur.execute("""
+        SELECT s.movie_query, s.is_active, s.matched_movie_title, s.triggered_at
+        FROM subscriptions s
+        JOIN users u ON u.id = s.user_id
+        WHERE u.username = 'admin';
+    """)
+    admin_tasks = cur.fetchall()
 
     print("\n" + "=" * 70)
     print("🎉 SEED & REPOPULATE COMPLETE!")
@@ -655,6 +899,8 @@ def main():
     print(f"   • Total Movie Reviews in DB:       {total_reviews_count:,}")
     if avg_rating is not None:
         print(f"   • Average System Rating:           {avg_rating:.2f} / 5.0 ⭐")
+    print(f"   • Total Screening Tracking Tasks:  {total_subs:,} ({active_subs:,} active, {triggered_subs_cnt:,} triggered)")
+    print(f"   • Dispatched Notification Logs:    {total_notif_logs:,}")
     print(f"   • All users password:              Password123!")
 
     print("\n📊 Sample Movies Release Date vs Review Counts:")
@@ -663,6 +909,13 @@ def main():
     if len(movie_review_stats) > 6:
         for title, rel_date, stage, cnt in sorted(movie_review_stats, key=lambda x: x[3])[-3:]:
             print(f"   • {title[:32]:<32} | Rel: {rel_date} ({stage:<24}) -> {cnt:>2} reviews")
+
+    if admin_tasks:
+        print("\n👑 Admin User Tracking Tasks:")
+        for q, act, match_title, trig in admin_tasks:
+            status_tag = "TRIGGERED" if trig else ("ACTIVE" if act else "PAUSED")
+            match_desc = f" -> Matched '{match_title}'" if match_title else ""
+            print(f"   • [{status_tag:<9}] Tracking: '{q}'{match_desc}")
 
     print("\n✨ Sample Varied Usernames:")
     for uname in sample_users:

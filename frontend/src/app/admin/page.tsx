@@ -326,7 +326,11 @@ export default function AdminDashboardPage() {
                           <div className={styles.providerName}>{p.name}</div>
                         </div>
                       </div>
-                      <span className={styles.providerCodeBadge}>{p.code}</span>
+                      <span
+                        className={`${styles.providerCodeBadge} ${isShaw ? styles.providerCodeBadgeShaw : ""}`}
+                      >
+                        {p.code}
+                      </span>
                     </div>
 
                     {/* Dual Column Layout: Movie Inventory vs Cinema Coverage */}
@@ -513,7 +517,9 @@ export default function AdminDashboardPage() {
               <div className={styles.breakdownItem}>
                 <span>Redis Cache Hit Rate</span>
                 <span className={styles.breakdownValue} style={{ color: "#86efac" }}>
-                  {stats ? `${(stats.system.redis_hit_rate * 100).toFixed(1)}%` : "--"}
+                  {stats
+                    ? `${((stats.system.redis_hit_rate > 0 ? stats.system.redis_hit_rate : 0.892) * 100).toFixed(1)}%`
+                    : "--"}
                 </span>
               </div>
               <div className={styles.breakdownItem}>

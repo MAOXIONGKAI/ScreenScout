@@ -364,6 +364,12 @@
   letter-spacing: 0.05em;
 }
 
+.providerCodeBadgeShaw {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
 .providerColumns {
   display: grid;
   grid-template-columns: 1fr 1fr;
