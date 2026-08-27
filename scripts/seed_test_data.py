@@ -673,6 +673,17 @@ def main():
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
 
+    # 0. Ensure schema tables exist on a clean database
+    schema_dir = PROJECT_ROOT / "movie_scraping" / "schema"
+    sql_files = ["cinemas.sql", "movies.sql", "schedules.sql", "users.sql", "subscriptions.sql"]
+    for sf in sql_files:
+        fp = schema_dir / sf
+        if fp.exists():
+            with open(fp, "r", encoding="utf-8") as f:
+                cur.execute(f.read())
+    conn.commit()
+    print("✓ Verified and created database schema tables (cinemas, movies, schedules, users, subscriptions).")
+
     # 1. Fetch existing movies with full metadata (title, genre, release_date, director, casts, description, provider, poster_url)
     cur.execute("""
         SELECT id, title, genre, release_date, director, casts, description, provider, poster_url
@@ -681,10 +692,22 @@ def main():
     """)
     all_movies = cur.fetchall()
     if not all_movies:
-        print("❌ No movies found in database. Please scrape movies first.")
-        cur.close()
-        conn.close()
-        return
+        print("📥 No movies found in database. Running initial cinema and movie scrapers...")
+        import subprocess
+        subprocess.run([sys.executable, "movie_scraping/cinemas/main.py"], cwd=str(PROJECT_ROOT))
+        subprocess.run([sys.executable, "movie_scraping/movies_and_schedules/main.py"], cwd=str(PROJECT_ROOT))
+        
+        cur.execute("""
+            SELECT id, title, genre, release_date, director, casts, description, provider, poster_url
+            FROM movies
+            ORDER BY id;
+        """)
+        all_movies = cur.fetchall()
+        if not all_movies:
+            print("❌ Scraping yielded 0 movies. Please check network/scraping logs.")
+            cur.close()
+            conn.close()
+            return
 
     today = datetime.now(timezone.utc).date()
     now_showing_movies = [m for m in all_movies if m[3] is None or m[3] <= today]

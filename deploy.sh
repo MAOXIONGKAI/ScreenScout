@@ -64,7 +64,10 @@ done
 echo "✓ Database is healthy and ready!"
 
 # 5. Populate initial cinema catalog and test data
-echo "🎬 Populating cinema database and test data..."
+echo "🎬 Ingesting cinema locations and current showtimes..."
+docker compose -f docker-compose.prod.yml run --rm notification-service python movie_scraping/cinemas/main.py || true
+docker compose -f docker-compose.prod.yml run --rm notification-service python movie_scraping/movies_and_schedules/main.py || true
+echo "🎬 Populating authentic reviews and tracking tasks across users..."
 docker compose -f docker-compose.prod.yml run --rm notification-service python scripts/seed_test_data.py || true
 
 echo "========================================================"
