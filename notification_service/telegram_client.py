@@ -259,12 +259,13 @@ class TelegramClient:
         clean_handle = handle.lstrip("@").strip()
         clean_first = first_name.strip().replace("*", "") if first_name else clean_handle
         escaped_handle = clean_handle.replace("_", "\\_")
+        frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3000")).rstrip("/")
 
         msg = (
             f"👋 *Hello {clean_first}!*\n\n"
             f"You've connected to *@The_ScreenScout_Bot*! 🎬\n\n"
             f"To complete your alert setup, please enter your Telegram username (@{escaped_handle}) "
-            f"in your **Movie Monitorings** dashboard on the ScreenScout website (http://localhost:3000/monitorings).\n\n"
+            f"in your **Movie Monitorings** dashboard on the ScreenScout website ({frontend_base}/monitorings).\n\n"
             f"Once saved, you'll receive your welcome confirmation and start getting real-time alerts! ✨"
         )
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"

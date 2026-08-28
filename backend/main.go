@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -106,16 +107,35 @@ func main() {
 	// Create Hertz server
 	h := server.Default(server.WithHostPorts(":8080"))
 
-	// CORS middleware — allow Next.js frontend
+	// Dynamic CORS configuration allowing localhost, domain, host IP, and environment overrides
+	allowedOrigins := []string{
+		"http://localhost:3000",
+		"http://127.0.0.1:3000",
+		"https://www.screenscout.live",
+		"https://screenscout.live",
+		"http://www.screenscout.live",
+		"http://screenscout.live",
+		"http://35.240.131.203",
+		"http://35.240.131.203:3000",
+		"http://35.240.131.203:8080",
+		"https://35.240.131.203",
+	}
+	if customOrigins := os.Getenv("ALLOWED_ORIGINS"); customOrigins != "" {
+		for _, o := range strings.Split(customOrigins, ",") {
+			if trimmed := strings.TrimSpace(o); trimmed != "" {
+				allowedOrigins = append(allowedOrigins, trimmed)
+			}
+		}
+	}
+	if feURL := os.Getenv("FRONTEND_URL"); feURL != "" {
+		allowedOrigins = append(allowedOrigins, strings.TrimRight(feURL, "/"))
+	}
+	if apiURL := os.Getenv("NEXT_PUBLIC_API_URL"); apiURL != "" {
+		allowedOrigins = append(allowedOrigins, strings.TrimRight(apiURL, "/"))
+	}
+
 	h.Use(cors.New(cors.Config{
-		AllowOrigins: []string{
-			"http://localhost:3000",
-			"http://127.0.0.1:3000",
-			"https://www.screenscout.live",
-			"https://screenscout.live",
-			"http://www.screenscout.live",
-			"http://screenscout.live",
-		},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length", "X-Cache"},

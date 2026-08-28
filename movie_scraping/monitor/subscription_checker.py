@@ -220,6 +220,8 @@ def check_and_trigger_subscriptions() -> int:
             # Format Telegram Alert Message
             escaped_handle = sub['recipient'].replace('_', '\\_')
             escaped_query = sub['movie_query'].replace('*', '').replace('_', '\\_')
+            frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3000")).rstrip("/")
+
             if len(matched_movies) == 1:
                 m = matched_movies[0]
                 status_label = "Now Showing" if m["status"] == "now_showing" else "Coming Soon"
@@ -234,7 +236,7 @@ def check_and_trigger_subscriptions() -> int:
                     f"📌 Status: {status_label}\n"
                     f"🏢 Cinema: {provider_label}\n"
                     f"📅 Release Date: {m['release_date']}\n\n"
-                    f"🔗 Check showtimes: http://localhost:3000/movies/{m['id']}"
+                    f"🔗 Check showtimes: {frontend_base}/movies/{m['id']}"
                 )
                 summary_title = m["title"]
             else:
@@ -250,7 +252,7 @@ def check_and_trigger_subscriptions() -> int:
                     msg_lines.append(
                         f"{i}. 🎥 *{clean_title}*\n"
                         f"   🏢 {provider_label} • 📌 {status_label}\n"
-                        f"   📅 {m['release_date']} • 🔗 http://localhost:3000/movies/{m['id']}\n"
+                        f"   📅 {m['release_date']} • 🔗 {frontend_base}/movies/{m['id']}\n"
                     )
                 msg = "\n".join(msg_lines)
                 summary_title = f"{matched_movies[0]['title']} (+{len(matched_movies)-1} more)"
