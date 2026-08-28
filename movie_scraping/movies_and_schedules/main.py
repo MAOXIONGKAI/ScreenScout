@@ -129,43 +129,65 @@ async def main():
             json.dump([asdict(s) for s in shaw_parsed_schedules], f, indent=4, default=str, ensure_ascii=False)
 
     # Insert/update parsed movies and schedules into PostgreSQL
-    print("\n" + "=" * 50)
-    print("Database Persistence")
-    print("=" * 50)
-
+    saved_movies_count = 0
+    saved_schedules_count = 0
     if all_parsed_movies:
         try:
-            saved_movies = save_movies(all_parsed_movies)
-            print(f"Movies database    : {saved_movies} movies inserted/updated successfully.")
+            saved_movies_count = save_movies(all_parsed_movies)
         except Exception as e:
-            print(f"Movies database    : write skipped or failed ({e})")
+            print(f"[Database Error] Movies write skipped or failed: {e}")
 
     if all_parsed_schedules:
         try:
-            saved_schedules = save_schedules(all_parsed_schedules)
-            print(f"Schedules database : {saved_schedules} schedules inserted/updated successfully.")
+            saved_schedules_count = save_schedules(all_parsed_schedules)
         except Exception as e:
-            print(f"Schedules database : write skipped or failed ({e})")
+            print(f"[Database Error] Schedules write skipped or failed: {e}")
 
     # Invalidate Redis Movie Cache in Backend if active
+    cache_invalidated = False
     try:
         import urllib.request
         api_url = os.getenv("BACKEND_API_URL", "http://localhost:8080")
         req = urllib.request.Request(f"{api_url}/api/cache/movies/invalidate", method="POST", data=b"")
         with urllib.request.urlopen(req, timeout=2) as resp:
             if resp.status == 200:
-                print("Cache Invalidation  : Redis movie cache invalidated successfully.")
+                cache_invalidated = True
     except Exception:
         pass
 
-    print("=" * 50 + "\n")
-
     # Monitor & Trigger Subscriptions
+    triggered_subs_count = 0
     try:
         from monitor.subscription_checker import check_and_trigger_subscriptions
-        check_and_trigger_subscriptions()
+        triggered_subs_count = check_and_trigger_subscriptions()
     except Exception as e:
         print(f"[Subscription Monitor Warning] Could not run subscription checker: {e}")
+
+    # Final Consolidated Outcome Statistics Summary
+    print("\n" + "=" * 60)
+    print("🎬 Scraping Pipeline Outcome Statistics")
+    print("=" * 60)
+    print("📊 Scraping & Parsing:")
+    print(f"   • Total Movies Parsed     : {len(all_parsed_movies):,} ({total_showing:,} Showing Now, {total_coming:,} Coming Soon)")
+    if run_gv:
+        print(f"     - Golden Village        : {len(gv_parsed_movies):,} movies ({gv_showing:,} Showing Now, {gv_coming:,} Coming Soon)")
+    if run_shaw:
+        print(f"     - Shaw Theatre          : {len(shaw_parsed_movies):,} movies ({shaw_showing:,} Showing Now, {shaw_coming:,} Coming Soon)")
+    print(f"   • Total Schedules Parsed  : {len(all_parsed_schedules):,} showtimes (across {all_sched_movies:,} movies)")
+    if run_gv:
+        print(f"     - Golden Village        : {len(gv_parsed_schedules):,} showtimes ({gv_sched_movies:,} movies)")
+    if run_shaw:
+        print(f"     - Shaw Theatre          : {len(shaw_parsed_schedules):,} showtimes ({shaw_sched_movies:,} movies)")
+
+    print("\n💾 Database Persistence:")
+    print(f"   • Movies Database         : {saved_movies_count:,} records upserted")
+    print(f"   • Schedules Database      : {saved_schedules_count:,} records upserted")
+
+    print("\n⚡ Cache & Notification Alerts:")
+    cache_msg = "Invalidated (Fresh)" if cache_invalidated else "Bypassed / Not Active"
+    print(f"   • Redis Movie Cache       : {cache_msg}")
+    print(f"   • Subscriptions Triggered : {triggered_subs_count:,} alert(s) dispatched")
+    print("============================================================\n")
 
 
 if __name__ == "__main__":

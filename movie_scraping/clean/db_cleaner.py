@@ -5,7 +5,7 @@ try:
     load_dotenv()
 except ImportError:
     pass
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import psycopg2
 
 DEFAULT_DB_URI = os.getenv(
@@ -52,18 +52,57 @@ class DBCleaner:
             conn.commit()
         return count
 
-    def clean_all(self) -> Dict[str, int]:
-        """Perform full database cleanup for both outdated schedules and movies."""
+    def get_database_stats(self) -> Dict[str, Any]:
+        """Fetch current database snapshot statistics post-cleanup."""
+        stats = {
+            "total_movies": 0,
+            "now_showing_movies": 0,
+            "coming_soon_movies": 0,
+            "total_schedules": 0,
+            "total_cinemas": 0,
+        }
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT COUNT(*) FROM cinemas;")
+                    row = cur.fetchone()
+                    if row:
+                        stats["total_cinemas"] = row[0]
+
+                    cur.execute("""
+                        SELECT 
+                            COUNT(*),
+                            COUNT(*) FILTER (WHERE release_date <= CURRENT_DATE),
+                            COUNT(*) FILTER (WHERE release_date > CURRENT_DATE)
+                        FROM movies;
+                    """)
+                    row = cur.fetchone()
+                    if row:
+                        stats["total_movies"] = row[0]
+                        stats["now_showing_movies"] = row[1]
+                        stats["coming_soon_movies"] = row[2]
+
+                    cur.execute("SELECT COUNT(*) FROM schedules;")
+                    row = cur.fetchone()
+                    if row:
+                        stats["total_schedules"] = row[0]
+        except Exception as e:
+            stats["error"] = str(e)
+        return stats
+
+    def clean_all(self) -> Dict[str, Any]:
+        """Perform full database cleanup for both outdated schedules and movies, returning detailed stats."""
         deleted_schedules = self.clean_outdated_schedules()
         deleted_movies = self.clean_outdated_movies()
-        print(f"Database cleanup: Deleted {deleted_schedules} expired schedules and {deleted_movies} outdated movies.")
+        db_stats = self.get_database_stats()
         return {
             "deleted_schedules": deleted_schedules,
             "deleted_movies": deleted_movies,
+            "db_stats": db_stats,
         }
 
 
-def clean_database(db_uri: Optional[str] = None) -> Dict[str, int]:
+def clean_database(db_uri: Optional[str] = None) -> Dict[str, Any]:
     """Helper function to execute database cleanup."""
     cleaner = DBCleaner(db_uri=db_uri)
     return cleaner.clean_all()

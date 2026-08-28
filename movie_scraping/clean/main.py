@@ -23,12 +23,28 @@ def invalidate_backend_cache():
 
 
 def main():
-    print("Starting database cleanup task...")
+    print("=" * 60)
+    print("ScreenScout Database Cleanup & Maintenance")
+    print("=" * 60)
+    
     res = clean_database()
-    print(f"\nCleanup task completed successfully:")
-    print(f"- Expired schedules removed: {res['deleted_schedules']}")
-    print(f"- Outdated movies removed: {res['deleted_movies']}")
+    stats = res.get("db_stats", {})
+
+    print("\n" + "=" * 60)
+    print("📊 Database Cleanup Outcome Statistics")
+    print("=" * 60)
+    print("🧹 Purged Outdated Records:")
+    print(f"   • Expired Schedules Removed : {res.get('deleted_schedules', 0):,}")
+    print(f"   • Outdated Movies Removed   : {res.get('deleted_movies', 0):,}")
+    
+    print("\n💾 Live Database Snapshot (Post-Cleanup):")
+    print(f"   • Active Movies Catalog     : {stats.get('total_movies', 0):,} ({stats.get('now_showing_movies', 0):,} Now Showing, {stats.get('coming_soon_movies', 0):,} Coming Soon)")
+    print(f"   • Active Showtime Schedules : {stats.get('total_schedules', 0):,}")
+    print(f"   • Cinema Locations          : {stats.get('total_cinemas', 0):,}")
+    
+    print("\n⚡ Backend Invalidation:")
     invalidate_backend_cache()
+    print("============================================================\n")
 
 
 if __name__ == "__main__":
