@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/maoxiongkai/screenscout-backend/model"
@@ -19,20 +20,23 @@ func NewCinemaRepo(pool *pgxpool.Pool) *CinemaRepo {
 }
 
 // ListCinemas returns all cinemas, optionally filtered by provider name.
-// Provider maps to cinema name: GV → "Golden Village", SHAW → "Shaw Theatres"
+// Provider maps to cinema name: GV → "Golden Village", SHAW → "Shaw Theatres" / "Shaw Theatre"
 func (r *CinemaRepo) ListCinemas(ctx context.Context, provider string) ([]model.Cinema, error) {
 	var query string
 	var args []interface{}
 
-	if provider != "" {
-		providerName := mapProviderToName(provider)
-		if providerName != "" {
+	if strings.TrimSpace(provider) != "" {
+		providerUpper := strings.ToUpper(strings.TrimSpace(provider))
+		if providerUpper == "GV" || strings.Contains(providerUpper, "GOLDEN") {
 			query = `SELECT id, name, branch, postal_code, address, created_at
-			         FROM cinemas WHERE name = $1 ORDER BY branch`
-			args = append(args, providerName)
+			         FROM cinemas WHERE name ILIKE '%Golden Village%' ORDER BY branch`
+		} else if providerUpper == "SHAW" || strings.Contains(providerUpper, "SHAW") {
+			query = `SELECT id, name, branch, postal_code, address, created_at
+			         FROM cinemas WHERE name ILIKE '%Shaw%' ORDER BY branch`
 		} else {
 			query = `SELECT id, name, branch, postal_code, address, created_at
-			         FROM cinemas ORDER BY name, branch`
+			         FROM cinemas WHERE name ILIKE $1 OR branch ILIKE $1 ORDER BY branch`
+			args = append(args, "%"+provider+"%")
 		}
 	} else {
 		query = `SELECT id, name, branch, postal_code, address, created_at
@@ -80,7 +84,7 @@ func (r *CinemaRepo) ListProviders(ctx context.Context) ([]string, error) {
 
 // mapProviderToName maps provider code to cinema name.
 func mapProviderToName(provider string) string {
-	switch provider {
+	switch strings.ToUpper(strings.TrimSpace(provider)) {
 	case "GV":
 		return "Golden Village"
 	case "SHAW":

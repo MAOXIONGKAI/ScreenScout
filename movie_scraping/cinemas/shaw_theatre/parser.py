@@ -49,22 +49,22 @@ def parse_cinema_item(raw: Dict[str, Any]) -> Cinema:
     )
 
     if raw.get("branch"):
-        brand_name = "Shaw Theatre"
+        brand_name = "Shaw Theatres"
         branch_name = str(raw["branch"]).strip()
     else:
-        full_name = shaw.name or "Shaw Theatre"
+        full_name = shaw.name or "Shaw Theatres"
         if full_name.startswith("Shaw Theatres"):
-            brand_name = "Shaw Theatre"
+            brand_name = "Shaw Theatres"
             branch_name = full_name[13:].strip()
             if not branch_name:
                 branch_name = full_name
         elif full_name.startswith("Shaw Theatre"):
-            brand_name = "Shaw Theatre"
+            brand_name = "Shaw Theatres"
             branch_name = full_name[12:].strip()
             if not branch_name:
                 branch_name = full_name
         else:
-            brand_name = "Shaw Theatre"
+            brand_name = "Shaw Theatres"
             branch_name = full_name
 
     if branch_name.lower() == "nex":
