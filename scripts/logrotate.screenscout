@@ -1,0 +1,21 @@
+# ==============================================================================
+# ScreenScout Linux System Logrotate Configuration
+# ==============================================================================
+# Place this file in /etc/logrotate.d/screenscout (or run scripts/setup_cron.sh)
+# Retains up to 30 days of compressed daily logs with Singapore date format.
+# ==============================================================================
+
+/var/log/screenscout/*.log
+/home/*/*/ScreenScout/logs/*.log
+/root/ScreenScout/logs/*.log {
+    daily
+    rotate 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    create 0644 root root
+    dateext
+    dateformat -%Y%m%d
+}

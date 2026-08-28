@@ -47,5 +47,37 @@ docker compose run --rm scrape-gv
 docker compose run --rm scrape-shaw
 
 # Run full end-to-end pipeline in Docker
-docker compose run --rm run-all
+## Production Linux Cron Jobs & Automated Logging
+
+ScreenScout comes with turnkey Linux cron automation with **Singapore Timezone (SGT / Asia/Singapore / UTC+8)** logging and **30-day log rotation**.
+
+### Scheduled Cron Tasks
+
+| Frequency | Task | Description |
+| :--- | :--- | :--- |
+| `0 */6 * * *` | **Full Fetch Pipeline** | Scrapes cinemas, movies, and schedules across all providers |
+| `*/5 * * * *` | **Subscription Monitor** | Checks active subscriptions and dispatches Telegram notifications |
+| `0 2 * * *` | **Daily Cleanup & Rotation** | Cleans expired schedules/movies and enforces 30-day log rotation |
+
+### Installation & Management
+
+```bash
+# 1. Install cron jobs into current user crontab
+make cron-setup
+# or: ./scripts/setup_cron.sh
+
+# 2. View installed crontab and log file status
+make cron-status
+
+# 3. Stream live logs across all cron tasks
+make cron-logs
+
+# 4. Remove cron jobs
+make cron-remove
 ```
+
+### Log File Locations
+- **Fetch Pipeline:** `logs/fetch_pipeline.log`
+- **Subscription Monitor:** `logs/subscription_monitor.log`
+- **Daily Cleanup:** `logs/db_cleanup.log`
+- **Gzip Archives (30 Days Retention):** `logs/archive/`

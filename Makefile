@@ -1,4 +1,4 @@
-.PHONY: help setup db-up db-down db-logs db-psql redis-up redis-down redis-logs redis-cli scrape-cinemas scrape-movies scrape-gv scrape-shaw clean-db run-all docker-scrape-cinemas docker-scrape-movies docker-scrape-gv docker-scrape-shaw docker-clean-db docker-run-all backend frontend dev test-backend test-python test-frontend test
+.PHONY: help setup db-up db-down db-logs db-psql redis-up redis-down redis-logs redis-cli scrape-cinemas scrape-movies scrape-gv scrape-shaw clean-db run-all docker-scrape-cinemas docker-scrape-movies docker-scrape-gv docker-scrape-shaw docker-clean-db docker-run-all backend frontend dev test-backend test-python test-frontend test cron-setup cron-status cron-logs cron-test cron-remove
 
 PYTHON := $(shell if [ -f venv/bin/python ]; then echo "venv/bin/python"; else echo "python3"; fi)
 
@@ -136,4 +136,30 @@ prod-logs: ## Tail logs across all production containers
 
 deploy: ## Run turnkey production deployment script
 	./deploy.sh
+
+cron-setup: ## Install ScreenScout cron jobs into crontab
+	./scripts/setup_cron.sh
+
+cron-status: ## Display installed crontab jobs and log file sizes
+	@echo "\033[1;33mCurrent Crontab Configuration:\033[0m"
+	@crontab -l 2>/dev/null | grep -A 20 "# >>> ScreenScout Cron Start >>>" || crontab -l 2>/dev/null || echo "No crontab installed."
+	@echo ""
+	@echo "\033[1;33mLog Files:\033[0m"
+	@ls -lh logs/ 2>/dev/null || echo "No logs directory found."
+
+cron-logs: ## Tail live output across all cron job logs
+	@mkdir -p logs && touch logs/fetch_pipeline.log logs/subscription_monitor.log logs/db_cleanup.log
+	tail -f logs/fetch_pipeline.log logs/subscription_monitor.log logs/db_cleanup.log
+
+cron-test: ## Run a test pass of all 3 cron tasks locally
+	./scripts/cron_runner.sh subscription_monitor
+	./scripts/cron_runner.sh db_cleanup
+
+cron-remove: ## Remove ScreenScout cron jobs from crontab
+	@crontab -l 2>/dev/null | awk -v start="# >>> ScreenScout Cron Start >>>" -v end="# <<< ScreenScout Cron End <<<" ' \
+		$$0 ~ start { inside=1; next } \
+		$$0 ~ end   { inside=0; next } \
+		!inside    { print } \
+	' | crontab -
+	@echo "✓ ScreenScout cron jobs removed from crontab."
 
