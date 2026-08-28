@@ -70,10 +70,14 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 		return ""
 	}
 
+	cleanUser := strings.TrimPrefix(strings.TrimSpace(username), "@")
+	escapedUser := strings.ReplaceAll(cleanUser, "_", "\\_")
+	escapedQuery := strings.ReplaceAll(strings.ReplaceAll(movieQuery, "*", ""), "_", "\\_")
+
 	base := getFrontendBaseURL()
 	var sb strings.Builder
 	sb.WriteString("🎬 *ScreenScout Movie Alert!*\n\n")
-	sb.WriteString(fmt.Sprintf("Hello @%s,\n", username))
+	sb.WriteString(fmt.Sprintf("Hello @%s,\n", escapedUser))
 
 	if len(movies) == 1 {
 		m := movies[0]
@@ -85,15 +89,16 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 		if m.Provider == "SHAW" || m.Provider == "Shaw" {
 			providerStr = "Shaw Theatres"
 		}
+		cleanTitle := strings.ReplaceAll(strings.ReplaceAll(m.Title, "*", ""), "_", "\\_")
 
-		sb.WriteString(fmt.Sprintf("Your tracked movie keyword *\"%s\"* is now available!\n\n", movieQuery))
-		sb.WriteString(fmt.Sprintf("🎥 *%s*\n", m.Title))
+		sb.WriteString(fmt.Sprintf("Your tracked movie keyword *\"%s\"* is now available!\n\n", escapedQuery))
+		sb.WriteString(fmt.Sprintf("🎥 *%s*\n", cleanTitle))
 		sb.WriteString(fmt.Sprintf("📌 Status: %s\n", statusStr))
 		sb.WriteString(fmt.Sprintf("🏢 Cinema: %s\n", providerStr))
 		sb.WriteString(fmt.Sprintf("📅 Release Date: %s\n\n", m.ReleaseDate))
 		sb.WriteString(fmt.Sprintf("🔗 Check showtimes: %s/movies/%d", base, m.ID))
 	} else {
-		sb.WriteString(fmt.Sprintf("Your tracked movie keyword *\"%s\"* matched *%d* movies!\n\n", movieQuery, len(movies)))
+		sb.WriteString(fmt.Sprintf("Your tracked movie keyword *\"%s\"* matched *%d* movies!\n\n", escapedQuery, len(movies)))
 		for i, m := range movies {
 			statusStr := "Now Showing"
 			if m.Status == "coming_soon" {
@@ -103,8 +108,9 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 			if m.Provider == "SHAW" || m.Provider == "Shaw" {
 				providerStr = "Shaw Theatres"
 			}
+			cleanTitle := strings.ReplaceAll(strings.ReplaceAll(m.Title, "*", ""), "_", "\\_")
 
-			sb.WriteString(fmt.Sprintf("%d. 🎥 *%s*\n", i+1, m.Title))
+			sb.WriteString(fmt.Sprintf("%d. 🎥 *%s*\n", i+1, cleanTitle))
 			sb.WriteString(fmt.Sprintf("   🏢 %s • 📌 %s\n", providerStr, statusStr))
 			sb.WriteString(fmt.Sprintf("   📅 %s • 🔗 %s/movies/%d\n\n", m.ReleaseDate, base, m.ID))
 		}

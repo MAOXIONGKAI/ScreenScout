@@ -15,7 +15,7 @@ logger = logging.getLogger("notification_service.telegram")
 class TelegramClient:
     """Handles Telegram Bot API communications, user resolution, and message delivery."""
 
-    def __init__(self, token: Optional[str] = None, cache_file: Optional[Path] = None):
+    def __init__(self, token: Optional[str] = None, cache_file: Optional[Path] = None, sync_on_init: bool = False):
         self.token = (token if token is not None else config.TELEGRAM_BOT_TOKEN).strip()
         self.cache_file = cache_file or config.CACHE_FILE
         self.bot_info: Optional[Dict[str, Any]] = None
@@ -27,7 +27,8 @@ class TelegramClient:
         self._load_cache()
         if self.token:
             self._fetch_bot_info()
-            self.sync_updates()
+            if sync_on_init:
+                self.sync_updates()
 
     def _load_cache(self) -> None:
         """Load cached username -> chat_id mappings and welcomed users from disk."""
@@ -36,7 +37,7 @@ class TelegramClient:
                 with open(self.cache_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self.username_to_chat_id = {k.lower(): v for k, v in data.get("users", {}).items()}
-                    self.last_update_id = data.get("last_update_id", 0)
+                    self.last_update_id = max(self.last_update_id, data.get("last_update_id", 0))
                     self.welcomed_users = set(data.get("welcomed_users", []))
                     logger.info(f"Loaded {len(self.username_to_chat_id)} cached Telegram users")
             except Exception as e:
@@ -45,12 +46,33 @@ class TelegramClient:
     def _save_cache(self) -> None:
         """Persist username mappings and welcomed users to disk."""
         try:
+            # Merge with existing file if any other process wrote to it
+            disk_users = {}
+            disk_welcomed = set()
+            disk_update_id = 0
+            if self.cache_file.exists():
+                try:
+                    with open(self.cache_file, "r", encoding="utf-8") as f:
+                        existing = json.load(f)
+                        disk_users = existing.get("users", {})
+                        disk_welcomed = set(existing.get("welcomed_users", []))
+                        disk_update_id = existing.get("last_update_id", 0)
+                except Exception:
+                    pass
+
+            merged_users = {**disk_users, **self.username_to_chat_id}
+            merged_welcomed = disk_welcomed.union(self.welcomed_users)
+            latest_update_id = max(self.last_update_id, disk_update_id)
+
             with open(self.cache_file, "w", encoding="utf-8") as f:
                 json.dump({
-                    "users": self.username_to_chat_id,
-                    "last_update_id": self.last_update_id,
-                    "welcomed_users": sorted(list(self.welcomed_users)),
+                    "users": merged_users,
+                    "last_update_id": latest_update_id,
+                    "welcomed_users": sorted(list(merged_welcomed)),
                 }, f, indent=2)
+            self.username_to_chat_id = merged_users
+            self.welcomed_users = merged_welcomed
+            self.last_update_id = latest_update_id
         except Exception as e:
             logger.warning(f"Could not save cache file: {e}")
 
@@ -91,6 +113,9 @@ class TelegramClient:
         """
         if not self.token:
             return 0
+
+        # Reload cache from disk first in case another process updated it
+        self._load_cache()
 
         url = f"https://api.telegram.org/bot{self.token}/getUpdates"
         params = {"timeout": 0}
@@ -147,8 +172,16 @@ class TelegramClient:
                     if updates:
                         self._save_cache()
                         logger.info(f"Synced {len(updates)} Telegram updates, {new_users_count} new users mapped")
+        except urllib.error.HTTPError as e:
+            if e.code == 409:
+                # 409 Conflict: another polling instance or webhook is active
+                logger.debug("Telegram getUpdates returned 409 Conflict (another polling instance or webhook is active).")
+            else:
+                logger.warning(f"Telegram getUpdates HTTP {e.code}: {e.reason}")
         except Exception as e:
             logger.warning(f"Error syncing Telegram updates: {e}")
+
+        return new_users_count
 
         return new_users_count
 
@@ -250,7 +283,7 @@ class TelegramClient:
         except Exception:
             pass
 
-    def resolve_chat_id(self, recipient: str) -> Optional[Union[int, str]]:
+    def resolve_chat_id(self, recipient: str, allow_sync: bool = False) -> Optional[Union[int, str]]:
         """
         Resolve a recipient (e.g. '@john_doe', 'john_doe', '12345678', or '@mychannel')
         to a valid Telegram chat_id.
@@ -269,10 +302,16 @@ class TelegramClient:
         if clean in self.username_to_chat_id:
             return self.username_to_chat_id[clean]
 
-        # Try to sync latest updates in case the user just sent /start
-        self.sync_updates()
+        # Reload from disk cache in case background poller updated it
+        self._load_cache()
         if clean in self.username_to_chat_id:
             return self.username_to_chat_id[clean]
+
+        # If allow_sync requested, try syncing latest updates
+        if allow_sync:
+            self.sync_updates()
+            if clean in self.username_to_chat_id:
+                return self.username_to_chat_id[clean]
 
         # If it's a public channel username like @channelname
         if raw.startswith("@"):

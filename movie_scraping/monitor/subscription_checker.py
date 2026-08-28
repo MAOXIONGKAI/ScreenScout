@@ -180,7 +180,8 @@ def check_and_trigger_subscriptions() -> int:
         # 1. Fetch all active subscriptions
         cur.execute("""
             SELECT s.id, s.user_id, s.movie_query, s.is_active, u.username,
-                   COALESCE(nc.channel_user_id, '@' || u.username) AS recipient
+                   COALESCE(nc.channel_user_id, '@' || u.username) AS recipient,
+                   COALESCE(nc.is_enabled, TRUE) AS is_enabled
             FROM subscriptions s
             JOIN users u ON s.user_id = u.id
             LEFT JOIN notification_channels nc ON s.user_id = nc.user_id AND nc.channel_type = 'TELEGRAM'
@@ -223,7 +224,7 @@ def check_and_trigger_subscriptions() -> int:
                 m = matched_movies[0]
                 status_label = "Now Showing" if m["status"] == "now_showing" else "Coming Soon"
                 provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
-                clean_title = m["title"].replace('*', '').strip()
+                clean_title = m["title"].replace('*', '').replace('_', '\\_').strip()
 
                 msg = (
                     f"🎬 *ScreenScout Movie Alert!*\n\n"
@@ -245,7 +246,7 @@ def check_and_trigger_subscriptions() -> int:
                 for i, m in enumerate(matched_movies, 1):
                     status_label = "Now Showing" if m["status"] == "now_showing" else "Coming Soon"
                     provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
-                    clean_title = m["title"].replace('*', '').strip()
+                    clean_title = m["title"].replace('*', '').replace('_', '\\_').strip()
                     msg_lines.append(
                         f"{i}. 🎥 *{clean_title}*\n"
                         f"   🏢 {provider_label} • 📌 {status_label}\n"
@@ -267,8 +268,12 @@ def check_and_trigger_subscriptions() -> int:
                 for m in matched_movies
             ]
 
-            # Send Alert
-            delivery_status = send_telegram_alert(sub["recipient"], msg)
+            # Send Alert if enabled
+            if sub.get("is_enabled", True):
+                delivery_status = send_telegram_alert(sub["recipient"], msg)
+            else:
+                delivery_status = "SKIPPED_DISABLED"
+                print(f"[Subscription Notice] Notifications disabled for {sub['recipient']}. Skipping alert.")
 
             # Mark subscription as triggered and log notification
             cur.execute("""
