@@ -101,3 +101,41 @@ jobs:
 
       - name: Build Next.js Production Bundle
         run: npm run build
+
+  # ==========================================
+  # 4. Continuous Deployment (CD to Production)
+  # ==========================================
+  deploy:
+    name: Continuous Deployment (Linux Server)
+    needs: [backend-tests, python-tests, frontend-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT || 22 }}
+          script: |
+            set -e
+            echo "========================================================"
+            echo "🚀 Starting ScreenScout Production Auto-Deployment..."
+            echo "========================================================"
+            
+            # Navigate to project directory
+            cd ~/ScreenScout || cd /home/${{ secrets.USERNAME }}/ScreenScout
+            
+            echo "📥 Fetching latest code from GitHub..."
+            git pull origin main
+            
+            echo "🏗️ Building and restarting production containers..."
+            docker compose -f docker-compose.prod.yml up -d --build
+            
+            echo "🧹 Cleaning up unused Docker images..."
+            docker image prune -f || true
+            
+            echo "========================================================"
+            echo "🎉 Continuous Deployment Completed Successfully!"
+            echo "========================================================"
