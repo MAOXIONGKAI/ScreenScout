@@ -90,29 +90,39 @@ run_python_task() {
 
     local mode="${SCREENSCOUT_RUN_MODE:-auto}"
 
-    # Auto-detect mode if not forced
+    # Auto-detect mode if not explicitly set
     if [ "${mode}" = "auto" ]; then
-        if [ -x "${PROJECT_ROOT}/venv/bin/python" ] || [ -f "${PROJECT_ROOT}/requirements.txt" ]; then
+        if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "screenscout_prod_notif"; then
+            mode="docker_exec"
+        elif command -v docker >/dev/null 2>&1 && [ -f "${PROJECT_ROOT}/docker-compose.prod.yml" ] && docker ps --format '{{.Names}}' 2>/dev/null | grep -q "screenscout_prod_db"; then
+            mode="docker_compose"
+        elif [ -x "${PROJECT_ROOT}/venv/bin/python" ]; then
             mode="venv"
-        elif command -v docker >/dev/null 2>&1 && [ -f "${PROJECT_ROOT}/docker-compose.prod.yml" ]; then
-            mode="docker"
         else
-            mode="venv"
+            mode="host_python"
         fi
     fi
 
-    if [ "${mode}" = "docker" ]; then
-        # Run inside notification-service container or ephemeral container
-        if [ -f "${PROJECT_ROOT}/docker-compose.prod.yml" ]; then
-            docker compose -f "${PROJECT_ROOT}/docker-compose.prod.yml" run --rm --no-deps notification-service python "${script_rel_path}" "${args[@]}"
-        else
-            docker compose run --rm --no-deps scraper-base python "${script_rel_path}" "${args[@]}"
-        fi
-    else
-        local py_bin
-        py_bin="$(resolve_python_cmd)"
-        "${py_bin}" "${PROJECT_ROOT}/${script_rel_path}" "${args[@]}"
-    fi
+    case "${mode}" in
+        docker_exec)
+            docker exec -i screenscout_prod_notif python "${script_rel_path}" "${args[@]}"
+            ;;
+        docker_compose|docker)
+            if [ -f "${PROJECT_ROOT}/docker-compose.prod.yml" ]; then
+                docker compose -f "${PROJECT_ROOT}/docker-compose.prod.yml" run --rm notification-service python "${script_rel_path}" "${args[@]}"
+            else
+                docker compose run --rm scraper-base python "${script_rel_path}" "${args[@]}"
+            fi
+            ;;
+        venv)
+            "${PROJECT_ROOT}/venv/bin/python" "${PROJECT_ROOT}/${script_rel_path}" "${args[@]}"
+            ;;
+        host_python|*)
+            local py_bin
+            py_bin="$(resolve_python_cmd)"
+            "${py_bin}" "${PROJECT_ROOT}/${script_rel_path}" "${args[@]}"
+            ;;
+    esac
 }
 
 # 8. Main Execution Wrapper
