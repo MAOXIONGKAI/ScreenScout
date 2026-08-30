@@ -12,6 +12,7 @@ import {
   CreateReviewPayload,
   MovieReviewsResponse,
   AdminStatsResponse,
+  ScrapeResponse,
 } from "./types";
 
 const API_BASE =
@@ -347,4 +348,23 @@ export async function triggerSubscriptionCheck(): Promise<{ message: string; mat
   }
   return data;
 }
+
+// triggerAdminScrape triggers full scrape of cinemas, movies, and schedules (POST /api/admin/scrape)
+export async function triggerAdminScrape(token: string): Promise<ScrapeResponse> {
+  const res = await fetch(`${API_BASE}/api/admin/scrape`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || data.details || "Failed to trigger refetch of cinemas, movies, and schedules");
+  }
+  return data;
+}
+
 

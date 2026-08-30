@@ -88,6 +88,17 @@ func (h *AdminHandler) TriggerScrape(ctx context.Context, c *app.RequestContext)
 }
 
 func findPythonAndProjectRoot() (string, string) {
+	if envRoot := os.Getenv("PROJECT_ROOT"); envRoot != "" {
+		if envPy := os.Getenv("PYTHON_BIN"); envPy != "" {
+			return envPy, envRoot
+		}
+		venvPy := filepath.Join(envRoot, "venv", "bin", "python")
+		if _, err := os.Stat(venvPy); err == nil {
+			return venvPy, envRoot
+		}
+		return "python3", envRoot
+	}
+
 	candidates := []string{
 		".",
 		"..",
@@ -98,6 +109,9 @@ func findPythonAndProjectRoot() (string, string) {
 		checkPath := filepath.Join(dir, "movie_scraping", "cinemas", "main.py")
 		if _, err := os.Stat(checkPath); err == nil {
 			absDir, _ := filepath.Abs(dir)
+			if envPy := os.Getenv("PYTHON_BIN"); envPy != "" {
+				return envPy, absDir
+			}
 			venvPy := filepath.Join(absDir, "venv", "bin", "python")
 			if _, vErr := os.Stat(venvPy); vErr == nil {
 				return venvPy, absDir

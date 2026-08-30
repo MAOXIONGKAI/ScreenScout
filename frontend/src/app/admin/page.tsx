@@ -8,6 +8,7 @@ import {
   fetchAdminStats,
   invalidateAllMovieCache,
   triggerSubscriptionCheck,
+  triggerAdminScrape,
 } from "@/lib/api";
 import { AdminStatsResponse } from "@/lib/types";
 import styles from "./page.module.css";
@@ -21,6 +22,7 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isActionRunning, setIsActionRunning] = useState<boolean>(false);
+  const [isScraping, setIsScraping] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<string>("");
 
   // Live Singapore Clock
@@ -60,6 +62,27 @@ export default function AdminDashboardPage() {
       loadStats();
     }
   }, [isAuthLoading, user, token, loadStats]);
+
+  const handleTriggerScrape = async () => {
+    if (!token) return;
+    try {
+      setIsActionRunning(true);
+      setIsScraping(true);
+      setError(null);
+      setToastMessage("⏳ Pipeline started: Ingesting cinemas, movies, and screening schedules from providers...");
+      const res = await triggerAdminScrape(token);
+      const durationSec = res.duration_ms ? ` in ${(res.duration_ms / 1000).toFixed(1)}s` : "";
+      const cacheNote = res.flushed_keys_count !== undefined ? ` (${res.flushed_keys_count} cache keys cleared)` : "";
+      setToastMessage(`✓ Catalog refetch completed successfully${durationSec}!${cacheNote}`);
+      setTimeout(() => setToastMessage(null), 5000);
+      await loadStats();
+    } catch (err: any) {
+      setError("Error triggering refetch: " + (err.message || "Unknown error"));
+    } finally {
+      setIsActionRunning(false);
+      setIsScraping(false);
+    }
+  };
 
   const handlePurgeCache = async () => {
     try {
@@ -223,6 +246,15 @@ export default function AdminDashboardPage() {
 
           <div className={styles.opsButtons}>
             <button
+              className={`${styles.opBtn} ${styles.refetchBtn}`}
+              onClick={handleTriggerScrape}
+              disabled={isActionRunning}
+              title="Execute full scraper pipeline to refresh cinema locations, movies, and showtimes from Golden Village & Shaw"
+            >
+              <span className={isScraping ? styles.spinningIcon : ""}>{isScraping ? "⏳" : "🔄"}</span>
+              <span>{isScraping ? "Refetching Pipeline..." : "Refetch Cinemas, Movies & Schedules"}</span>
+            </button>
+            <button
               className={`${styles.opBtn} ${styles.purgeCacheBtn}`}
               onClick={handlePurgeCache}
               disabled={isActionRunning}
@@ -262,6 +294,15 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
             </div>
+            <button
+              className={`${styles.opBtn} ${styles.refetchSectionBtn}`}
+              onClick={handleTriggerScrape}
+              disabled={isActionRunning}
+              title="Sync and refetch cinemas, movies, and schedules from providers"
+            >
+              <span className={isScraping ? styles.spinningIcon : ""}>{isScraping ? "⏳" : "📡"}</span>
+              <span>{isScraping ? "Refetching..." : "Sync & Refetch Now"}</span>
+            </button>
           </div>
 
           {/* Overall Summary Strip */}

@@ -207,3 +207,13 @@ export interface MovieReviewsResponse {
   average_rating: number;
   rating_counts: Record<string, number>;
 }
+
+// ScrapeResponse represents the response from triggering a manual scrape pass
+export interface ScrapeResponse {
+  success: boolean;
+  message: string;
+  duration_ms?: number;
+  flushed_keys_count?: number;
+}
+
+

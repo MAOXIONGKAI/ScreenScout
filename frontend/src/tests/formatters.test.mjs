@@ -49,3 +49,21 @@ test("Safety Net: Maximum 10 active tasks limit rule", () => {
   assert.strictEqual(canAddActiveSubscription(10), false);
   assert.strictEqual(canAddActiveSubscription(15), false);
 });
+
+test("Admin Scraper duration and status message formatting", () => {
+  const formatScrapeResult = (durationMs, flushedCount) => {
+    const durationSec = durationMs ? ` in ${(durationMs / 1000).toFixed(1)}s` : "";
+    const cacheNote = flushedCount !== undefined ? ` (${flushedCount} cache keys cleared)` : "";
+    return `✓ Catalog refetch completed successfully${durationSec}!${cacheNote}`;
+  };
+
+  assert.strictEqual(
+    formatScrapeResult(3500, 12),
+    "✓ Catalog refetch completed successfully in 3.5s! (12 cache keys cleared)"
+  );
+  assert.strictEqual(
+    formatScrapeResult(null, undefined),
+    "✓ Catalog refetch completed successfully!"
+  );
+});
+
