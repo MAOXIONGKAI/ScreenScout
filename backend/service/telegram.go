@@ -73,19 +73,25 @@ func getFrontendBaseURL() string {
 }
 
 // FormatMovieAlertMessage formats a rich notification text for single or multiple matched movies.
-func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) string {
+func FormatMovieAlertMessage(handleOrUser, movieQuery string, movies []model.Movie) string {
 	if len(movies) == 0 {
 		return ""
 	}
 
-	cleanUser := strings.TrimPrefix(strings.TrimSpace(username), "@")
-	escapedUser := html.EscapeString(cleanUser)
+	cleanHandle := strings.TrimSpace(handleOrUser)
+	if cleanHandle == "" {
+		cleanHandle = "MovieFan"
+	}
+	if !strings.HasPrefix(cleanHandle, "@") && !strings.HasPrefix(cleanHandle, "-") {
+		cleanHandle = "@" + cleanHandle
+	}
+	escapedHandle := html.EscapeString(cleanHandle)
 	escapedQuery := html.EscapeString(movieQuery)
 
 	base := getFrontendBaseURL()
 	var sb strings.Builder
 	sb.WriteString("🎬 <b>ScreenScout Movie Alert!</b>\n\n")
-	sb.WriteString(fmt.Sprintf("Hello @%s,\n", escapedUser))
+	sb.WriteString(fmt.Sprintf("Hello %s,\n", escapedHandle))
 
 	if len(movies) == 1 {
 		m := movies[0]

@@ -292,15 +292,22 @@ func (h *SubscriptionHandler) CreateSubscription(ctx context.Context, c *app.Req
 		// Lookup user notification channel
 		ch, chErr := h.SubRepo.GetNotificationChannel(ctx, userID, "TELEGRAM")
 		recipient := "@" + username
+		telegramHandle := "@" + username
 		if chErr == nil && ch != nil {
+			if ch.ChannelUserID != "" {
+				telegramHandle = ch.ChannelUserID
+			}
 			if ch.ChatID != nil && *ch.ChatID != 0 {
 				recipient = fmt.Sprintf("%d", *ch.ChatID)
 			} else if ch.ChannelUserID != "" {
 				recipient = ch.ChannelUserID
 			}
 		}
+		if !strings.HasPrefix(telegramHandle, "@") && !strings.HasPrefix(telegramHandle, "-") {
+			telegramHandle = "@" + telegramHandle
+		}
 
-		msg := service.FormatMovieAlertMessage(username, query, matchingMovies)
+		msg := service.FormatMovieAlertMessage(telegramHandle, query, matchingMovies)
 		status, _ := h.Telegram.SendNotification(recipient, msg)
 
 		// Mark subscription as triggered with all matched movies
@@ -404,15 +411,22 @@ func (h *SubscriptionHandler) ToggleSubscription(ctx context.Context, c *app.Req
 
 			ch, chErr := h.SubRepo.GetNotificationChannel(ctx, userID, "TELEGRAM")
 			recipient := "@" + username
+			telegramHandle := "@" + username
 			if chErr == nil && ch != nil {
+				if ch.ChannelUserID != "" {
+					telegramHandle = ch.ChannelUserID
+				}
 				if ch.ChatID != nil && *ch.ChatID != 0 {
 					recipient = fmt.Sprintf("%d", *ch.ChatID)
 				} else if ch.ChannelUserID != "" {
 					recipient = ch.ChannelUserID
 				}
 			}
+			if !strings.HasPrefix(telegramHandle, "@") && !strings.HasPrefix(telegramHandle, "-") {
+				telegramHandle = "@" + telegramHandle
+			}
 
-			msg := service.FormatMovieAlertMessage(username, sub.MovieQuery, matchingMovies)
+			msg := service.FormatMovieAlertMessage(telegramHandle, sub.MovieQuery, matchingMovies)
 			status, _ := h.Telegram.SendNotification(recipient, msg)
 
 			_ = h.SubRepo.TriggerSubscriptionWithMovies(ctx, sub.ID, matchingMovies, userID, "TELEGRAM", recipient, msg, status)
@@ -468,16 +482,23 @@ func (h *SubscriptionHandler) CheckSubscriptions(ctx context.Context, c *app.Req
 
 		// Lookup notification channel
 		recipient := "@" + username
+		telegramHandle := "@" + username
 		ch, chErr := h.SubRepo.GetNotificationChannel(ctx, sub.UserID, "TELEGRAM")
 		if chErr == nil && ch != nil {
+			if ch.ChannelUserID != "" {
+				telegramHandle = ch.ChannelUserID
+			}
 			if ch.ChatID != nil && *ch.ChatID != 0 {
 				recipient = fmt.Sprintf("%d", *ch.ChatID)
 			} else if ch.ChannelUserID != "" {
 				recipient = ch.ChannelUserID
 			}
 		}
+		if !strings.HasPrefix(telegramHandle, "@") && !strings.HasPrefix(telegramHandle, "-") {
+			telegramHandle = "@" + telegramHandle
+		}
 
-		msg := service.FormatMovieAlertMessage(username, sub.MovieQuery, matchingMovies)
+		msg := service.FormatMovieAlertMessage(telegramHandle, sub.MovieQuery, matchingMovies)
 		status, _ := h.Telegram.SendNotification(recipient, msg)
 
 		if err := h.SubRepo.TriggerSubscriptionWithMovies(ctx, sub.ID, matchingMovies, sub.UserID, "TELEGRAM", recipient, msg, status); err == nil {

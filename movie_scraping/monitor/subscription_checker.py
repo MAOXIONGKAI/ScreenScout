@@ -203,6 +203,7 @@ def check_and_trigger_subscriptions() -> int:
         # 1. Fetch all active subscriptions
         cur.execute("""
             SELECT s.id, s.user_id, s.movie_query, s.is_active, u.username,
+                   COALESCE(nc.channel_user_id, '@' || u.username) AS telegram_handle,
                    COALESCE(CAST(nc.chat_id AS TEXT), nc.channel_user_id, '@' || u.username) AS recipient,
                    COALESCE(nc.is_enabled, TRUE) AS is_enabled
             FROM subscriptions s
@@ -250,7 +251,10 @@ def check_and_trigger_subscriptions() -> int:
                 continue
 
             # Format Telegram Alert Message (HTML Mode)
-            escaped_handle = html.escape(sub['recipient'])
+            handle = str(sub.get('telegram_handle') or sub.get('username') or 'MovieFan').strip()
+            if not handle.startswith('@') and not handle.startswith('-'):
+                handle = f"@{handle}"
+            escaped_handle = html.escape(handle)
             escaped_query = html.escape(sub['movie_query'])
             frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "https://screenscout.live")).rstrip("/")
 
