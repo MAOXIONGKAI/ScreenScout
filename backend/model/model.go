@@ -18,7 +18,7 @@ type Movie struct {
 	ReleaseDate    string     `json:"release_date"`
 	Duration       int        `json:"duration"`
 	CreatedAt      *time.Time `json:"created_at,omitempty"`
-	Status         string     `json:"status"` // "now_showing" or "coming_soon"
+	Status         string     `json:"status"` // "now_showing", "advance_sales", or "coming_soon"
 }
 
 // Cinema represents a cinema location.

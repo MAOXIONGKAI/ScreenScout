@@ -255,10 +255,16 @@ export default function MovieDetailPage() {
                 className={`badge ${
                   movie.status === "now_showing"
                     ? "badge-showing"
+                    : movie.status === "advance_sales"
+                    ? "badge-advance"
                     : "badge-coming"
                 }`}
               >
-                {movie.status === "now_showing" ? "Now Showing" : "Coming Soon"}
+                {movie.status === "now_showing"
+                  ? "Now Showing"
+                  : movie.status === "advance_sales"
+                  ? "Advance Sales"
+                  : "Coming Soon"}
               </span>
             </div>
 

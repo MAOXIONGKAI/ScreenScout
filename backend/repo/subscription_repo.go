@@ -338,8 +338,17 @@ func (r *SubscriptionRepo) FindMatchingMovies(ctx context.Context, movieQuery st
 	query := `
 		SELECT id, title, secondary_title, description, poster_url, trailer_url, website_url, director, casts, genre, provider, release_date, duration,
 		       CASE
-		           WHEN release_date > CURRENT_DATE THEN 'coming_soon'
-		           ELSE 'now_showing'
+		           WHEN EXISTS (
+		               SELECT 1 FROM schedules s
+		               WHERE s.movie_id = movies.id
+		                 AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
+		           ) AND release_date > CURRENT_DATE THEN 'advance_sales'
+		           WHEN EXISTS (
+		               SELECT 1 FROM schedules s
+		               WHERE s.movie_id = movies.id
+		                 AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
+		           ) THEN 'now_showing'
+		           ELSE 'coming_soon'
 		       END AS status
 		FROM movies
 		WHERE LOWER(title) LIKE $1 OR LOWER(COALESCE(secondary_title, '')) LIKE $1

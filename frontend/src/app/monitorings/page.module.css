@@ -1026,6 +1026,11 @@
   border: 1px solid rgba(52, 211, 153, 0.4);
 }
 
+.advanceTag {
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
 .comingTag {
   color: #c084fc;
   border: 1px solid rgba(192, 132, 252, 0.4);

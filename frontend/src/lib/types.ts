@@ -13,7 +13,7 @@ export interface Movie {
   provider: string;
   release_date: string;
   duration: number;
-  status: string; // "now_showing" | "coming_soon"
+  status: "now_showing" | "advance_sales" | "coming_soon" | string;
 }
 
 // Cinema represents a cinema location.
@@ -71,6 +71,7 @@ export interface User {
 export interface MovieStats {
   total: number;
   now_showing: number;
+  advance_sales: number;
   coming_soon: number;
 }
 
@@ -111,6 +112,7 @@ export interface ProviderStat {
   name: string;
   total_movies: number;
   now_showing: number;
+  advance_sales: number;
   coming_soon: number;
   cinemas_count: number;
   schedules_count: number;

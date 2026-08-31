@@ -112,6 +112,7 @@ export default function FilterBar({
           >
             <option value="">All Status</option>
             <option value="now_showing">Now Showing</option>
+            <option value="advance_sales">Advance Sales</option>
             <option value="coming_soon">Coming Soon</option>
           </select>
         </div>

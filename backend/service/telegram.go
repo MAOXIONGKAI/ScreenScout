@@ -82,7 +82,9 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 	if len(movies) == 1 {
 		m := movies[0]
 		statusStr := "Now Showing"
-		if m.Status == "coming_soon" {
+		if m.Status == "advance_sales" {
+			statusStr = "Advance Sales"
+		} else if m.Status == "coming_soon" {
 			statusStr = "Coming Soon"
 		}
 		providerStr := "Golden Village"
@@ -101,7 +103,9 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 		sb.WriteString(fmt.Sprintf("Your tracked movie keyword *\"%s\"* matched *%d* movies!\n\n", escapedQuery, len(movies)))
 		for i, m := range movies {
 			statusStr := "Now Showing"
-			if m.Status == "coming_soon" {
+			if m.Status == "advance_sales" {
+				statusStr = "Advance Sales"
+			} else if m.Status == "coming_soon" {
 				statusStr = "Coming Soon"
 			}
 			providerStr := "Golden Village"

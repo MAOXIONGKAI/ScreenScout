@@ -716,6 +716,13 @@ main {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
+.badge-advance {
+  color: #38bdf8;
+  background: rgba(8, 20, 30, 0.88);
+  border: 1px solid #0ea5e9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
 .badge-coming {
   color: #fbbf24;
   background: rgba(20, 15, 6, 0.88);

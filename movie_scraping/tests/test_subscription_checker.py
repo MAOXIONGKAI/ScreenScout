@@ -49,6 +49,34 @@ class TestSubscriptionMatchingLogic(unittest.TestCase):
         self.assertIn("Now Showing", msg)
         self.assertIn("http://localhost:3000/movies/42", msg)
 
+    def test_advance_sales_message_formatting(self):
+        recipient = "@john_doe"
+        query = "wicked"
+        m = {
+            "id": 99,
+            "title": "Wicked: For Good",
+            "status": "advance_sales",
+            "provider": "GV",
+            "release_date": "2026-11-20",
+        }
+
+        status_label = "Now Showing" if m["status"] == "now_showing" else ("Advance Sales" if m["status"] == "advance_sales" else "Coming Soon")
+        provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
+
+        msg = (
+            f"🎬 *ScreenScout Movie Alert!*\n\n"
+            f"Hello {recipient},\n"
+            f"Your tracked movie keyword *\"{query}\"* is now available!\n\n"
+            f"🎥 *{m['title']}*\n"
+            f"📌 Status: {status_label}\n"
+            f"🏢 Cinema: {provider_label}\n"
+            f"📅 Release Date: {m['release_date']}\n\n"
+            f"🔗 Check showtimes: http://localhost:3000/movies/{m['id']}"
+        )
+
+        self.assertIn("Advance Sales", msg)
+        self.assertIn("Wicked: For Good", msg)
+
     def test_multiple_movies_message_formatting(self):
         recipient = "@jane_doe"
         query = "avatar"

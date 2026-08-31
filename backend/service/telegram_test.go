@@ -47,6 +47,23 @@ func TestFormatMovieAlertMessage_SingleMovie(t *testing.T) {
 	}
 }
 
+func TestFormatMovieAlertMessage_AdvanceSales(t *testing.T) {
+	movies := []model.Movie{
+		{
+			ID:          15,
+			Title:       "Deadpool 4",
+			Provider:    "GV",
+			Status:      "advance_sales",
+			ReleaseDate: "2026-11-20",
+		},
+	}
+
+	msg := FormatMovieAlertMessage("bob", "deadpool", movies)
+	if !strings.Contains(msg, "📌 Status: Advance Sales") {
+		t.Errorf("Expected '📌 Status: Advance Sales', got:\n%s", msg)
+	}
+}
+
 func TestFormatMovieAlertMessage_MultipleMovies(t *testing.T) {
 	movies := []model.Movie{
 		{

@@ -113,6 +113,11 @@ WITH movie_status AS (
                 SELECT 1 FROM schedules s
                 WHERE s.movie_id = m.id
                   AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
+            ) AND m.release_date > CURRENT_DATE THEN 'advance_sales'
+            WHEN EXISTS (
+                SELECT 1 FROM schedules s
+                WHERE s.movie_id = m.id
+                  AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
             ) THEN 'now_showing'
             ELSE 'coming_soon'
         END AS status
@@ -200,7 +205,11 @@ SELECT ms.id, ms.title, ms.secondary_title, ms.description,
 FROM movie_status ms
 %s
 ORDER BY
-    CASE ms.status WHEN 'now_showing' THEN 0 ELSE 1 END,
+    CASE ms.status 
+        WHEN 'now_showing' THEN 0 
+        WHEN 'advance_sales' THEN 1 
+        ELSE 2 
+    END,
     ms.release_date DESC,
     ms.title ASC
 LIMIT $%d OFFSET $%d`, baseQuery, whereClause, argIdx, argIdx+1)
@@ -250,6 +259,11 @@ SELECT m.id, m.title, m.secondary_title, m.description,
        m.director, m.casts, m.genre, m.provider,
        m.release_date::text, m.duration, m.created_at,
        CASE
+           WHEN EXISTS (
+               SELECT 1 FROM schedules s
+               WHERE s.movie_id = m.id
+                 AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
+           ) AND m.release_date > CURRENT_DATE THEN 'advance_sales'
            WHEN EXISTS (
                SELECT 1 FROM schedules s
                WHERE s.movie_id = m.id

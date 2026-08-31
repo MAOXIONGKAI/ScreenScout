@@ -352,6 +352,12 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <div className={styles.summaryTile}>
+              <span className={styles.summaryTileLabel}>Advance Sales</span>
+              <span className={styles.summaryTileValue} style={{ color: "#38bdf8" }}>
+                {stats ? (stats.movies.advance_sales || 0).toLocaleString() : "--"}
+              </span>
+            </div>
+            <div className={styles.summaryTile}>
               <span className={styles.summaryTileLabel}>Coming Soon</span>
               <span className={styles.summaryTileValue} style={{ color: "#93c5fd" }}>
                 {stats ? stats.movies.coming_soon.toLocaleString() : "--"}
@@ -424,6 +430,13 @@ export default function AdminDashboardPage() {
                           <span style={{ color: "#86efac" }}>• Now Showing</span>
                           <span className={styles.subBlockDetailValue} style={{ color: "#86efac" }}>
                             {p.now_showing} ({showingPercent.toFixed(0)}%)
+                          </span>
+                        </div>
+
+                        <div className={styles.subBlockDetailRow}>
+                          <span style={{ color: "#38bdf8" }}>• Advance Sales</span>
+                          <span className={styles.subBlockDetailValue} style={{ color: "#38bdf8" }}>
+                            {p.advance_sales || 0}
                           </span>
                         </div>
 

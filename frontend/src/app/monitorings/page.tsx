@@ -817,6 +817,17 @@ export default function MonitoringsPage() {
                                 const isShowing =
                                   m.status === "now_showing" ||
                                   m.status === "LIVE";
+                                const isAdvance = m.status === "advance_sales";
+                                const statusLabel = isShowing
+                                  ? "Now Showing"
+                                  : isAdvance
+                                  ? "Advance Sales"
+                                  : "Coming Soon";
+                                const statusTagClass = isShowing
+                                  ? styles.showingTag
+                                  : isAdvance
+                                  ? styles.advanceTag
+                                  : styles.comingTag;
                                 return (
                                   <Link
                                     key={m.id}
@@ -839,13 +850,9 @@ export default function MonitoringsPage() {
                                         {isGV ? "Golden Village" : "Shaw Theatres"}
                                       </span>
                                       <span
-                                        className={`${styles.statusTag} ${
-                                          isShowing
-                                            ? styles.showingTag
-                                            : styles.comingTag
-                                        }`}
+                                        className={`${styles.statusTag} ${statusTagClass}`}
                                       >
-                                        {isShowing ? "Now Showing" : "Coming Soon"}
+                                        {statusLabel}
                                       </span>
                                       {m.release_date && (
                                         <span className={styles.releaseDateTag}>

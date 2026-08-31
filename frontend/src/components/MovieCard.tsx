@@ -27,6 +27,8 @@ export default function MovieCard({ movie, index = 0 }: MovieCardProps) {
   const statusBadge =
     movie.status === "now_showing" ? (
       <span className="badge badge-showing">Now Showing</span>
+    ) : movie.status === "advance_sales" ? (
+      <span className="badge badge-advance">Advance Sales</span>
     ) : (
       <span className="badge badge-coming">Coming Soon</span>
     );

@@ -31,7 +31,8 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 	query := `
 	SELECT 
 		(SELECT COUNT(*) FROM movies WHERE release_date IS NULL OR release_date >= DATE_TRUNC('year', CURRENT_DATE)) AS total_movies,
-		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE (m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)) AND EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
+		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE (m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)) AND (m.release_date IS NULL OR m.release_date <= CURRENT_DATE) AND EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
+		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE (m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)) AND m.release_date > CURRENT_DATE AND EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS advance_sales,
 		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE (m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)) AND NOT EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS coming_soon,
 		(SELECT COUNT(*) FROM cinemas) AS total_cinemas,
 		(SELECT COUNT(DISTINCT name) FROM cinemas) AS total_providers,
@@ -50,6 +51,7 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 	var (
 		totalMovies       int64
 		nowShowing        int64
+		advanceSales      int64
 		comingSoon        int64
 		totalCinemas      int64
 		totalProviders    int64
@@ -68,6 +70,7 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 	err := r.Pool.QueryRow(ctx, query).Scan(
 		&totalMovies,
 		&nowShowing,
+		&advanceSales,
 		&comingSoon,
 		&totalCinemas,
 		&totalProviders,
@@ -104,7 +107,8 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 	SELECT 
 		UPPER(m.provider) AS prov_code,
 		COUNT(*) AS total_movies,
-		COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
+		COUNT(*) FILTER (WHERE (m.release_date IS NULL OR m.release_date <= CURRENT_DATE) AND EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
+		COUNT(*) FILTER (WHERE m.release_date > CURRENT_DATE AND EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS advance_sales,
 		COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS coming_soon
 	FROM movies m
 	WHERE m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)
@@ -118,15 +122,16 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 		defer movieRows.Close()
 		for movieRows.Next() {
 			var code string
-			var total, nowShowing, comingSoon int64
-			if scanErr := movieRows.Scan(&code, &total, &nowShowing, &comingSoon); scanErr != nil {
+			var total, nowShowing, advanceSales, comingSoon int64
+			if scanErr := movieRows.Scan(&code, &total, &nowShowing, &advanceSales, &comingSoon); scanErr != nil {
 				fmt.Printf("[AdminRepo] Error scanning provider movies: %v\n", scanErr)
 			} else {
 				movieMap[code] = model.ProviderStat{
-					Code:        code,
-					TotalMovies: total,
-					NowShowing:  nowShowing,
-					ComingSoon:  comingSoon,
+					Code:         code,
+					TotalMovies:  total,
+					NowShowing:   nowShowing,
+					AdvanceSales: advanceSales,
+					ComingSoon:   comingSoon,
 				}
 			}
 		}
@@ -227,6 +232,7 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 			Name:           name,
 			TotalMovies:    mStat.TotalMovies,
 			NowShowing:     mStat.NowShowing,
+			AdvanceSales:   mStat.AdvanceSales,
 			ComingSoon:     mStat.ComingSoon,
 			CinemasCount:   cStat.cinemasCount,
 			SchedulesCount: cStat.schedulesCount,
@@ -235,9 +241,10 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 
 	res := &model.AdminStatsResponse{
 		Movies: model.MovieStats{
-			Total:      totalMovies,
-			NowShowing: nowShowing,
-			ComingSoon: comingSoon,
+			Total:        totalMovies,
+			NowShowing:   nowShowing,
+			AdvanceSales: advanceSales,
+			ComingSoon:   comingSoon,
 		},
 		Cinemas: model.CinemaStats{
 			CinemasCount:   totalCinemas,

@@ -4,9 +4,10 @@ import "time"
 
 // MovieStats represents movie inventory metrics.
 type MovieStats struct {
-	Total      int64 `json:"total"`
-	NowShowing int64 `json:"now_showing"`
-	ComingSoon int64 `json:"coming_soon"`
+	Total        int64 `json:"total"`
+	NowShowing   int64 `json:"now_showing"`
+	AdvanceSales int64 `json:"advance_sales"`
+	ComingSoon   int64 `json:"coming_soon"`
 }
 
 // CinemaStats represents cinema coverage and scheduling metrics.
@@ -52,6 +53,7 @@ type ProviderStat struct {
 	Name           string `json:"name"` // "Golden Village", "Shaw Theatres"
 	TotalMovies    int64  `json:"total_movies"`
 	NowShowing     int64  `json:"now_showing"`
+	AdvanceSales   int64  `json:"advance_sales"`
 	ComingSoon     int64  `json:"coming_soon"`
 	CinemasCount   int64  `json:"cinemas_count"`
 	SchedulesCount int64  `json:"schedules_count"`

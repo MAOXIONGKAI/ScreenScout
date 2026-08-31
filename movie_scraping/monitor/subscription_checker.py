@@ -204,8 +204,17 @@ def check_and_trigger_subscriptions() -> int:
             cur.execute("""
                 SELECT id, title, release_date, provider, poster_url,
                        CASE
-                           WHEN release_date > CURRENT_DATE THEN 'coming_soon'
-                           ELSE 'now_showing'
+                           WHEN EXISTS (
+                               SELECT 1 FROM schedules s
+                               WHERE s.movie_id = movies.id
+                                 AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
+                           ) AND release_date > CURRENT_DATE THEN 'advance_sales'
+                           WHEN EXISTS (
+                               SELECT 1 FROM schedules s
+                               WHERE s.movie_id = movies.id
+                                 AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
+                           ) THEN 'now_showing'
+                           ELSE 'coming_soon'
                        END AS status
                 FROM movies
                 WHERE LOWER(title) LIKE %s OR LOWER(COALESCE(secondary_title, '')) LIKE %s
@@ -224,7 +233,7 @@ def check_and_trigger_subscriptions() -> int:
 
             if len(matched_movies) == 1:
                 m = matched_movies[0]
-                status_label = "Now Showing" if m["status"] == "now_showing" else "Coming Soon"
+                status_label = "Now Showing" if m["status"] == "now_showing" else ("Advance Sales" if m["status"] == "advance_sales" else "Coming Soon")
                 provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
                 clean_title = m["title"].replace('*', '').replace('_', '\\_').strip()
 
@@ -246,7 +255,7 @@ def check_and_trigger_subscriptions() -> int:
                     f"Your tracked movie keyword *\"{escaped_query}\"* matched *{len(matched_movies)}* movies!\n",
                 ]
                 for i, m in enumerate(matched_movies, 1):
-                    status_label = "Now Showing" if m["status"] == "now_showing" else "Coming Soon"
+                    status_label = "Now Showing" if m["status"] == "now_showing" else ("Advance Sales" if m["status"] == "advance_sales" else "Coming Soon")
                     provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
                     clean_title = m["title"].replace('*', '').replace('_', '\\_').strip()
                     msg_lines.append(
