@@ -269,7 +269,7 @@ class TelegramClient:
         clean_handle = handle.lstrip("@").strip()
         clean_first = first_name.strip().replace("*", "") if first_name else clean_handle
         escaped_handle = clean_handle.replace("_", "\\_")
-        frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3000")).rstrip("/")
+        frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "https://screenscout.live")).rstrip("/")
 
         msg = (
             f"👋 *Hello {clean_first}!*\n\n"

@@ -232,7 +232,7 @@ def check_and_trigger_subscriptions() -> int:
             # Format Telegram Alert Message
             escaped_handle = sub['recipient'].replace('_', '\\_')
             escaped_query = sub['movie_query'].replace('*', '').replace('_', '\\_')
-            frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3000")).rstrip("/")
+            frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "https://screenscout.live")).rstrip("/")
 
             if len(matched_movies) == 1:
                 m = matched_movies[0]

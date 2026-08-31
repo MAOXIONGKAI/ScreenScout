@@ -40,14 +40,14 @@ class TestSubscriptionMatchingLogic(unittest.TestCase):
             f"📌 Status: {status_label}\n"
             f"🏢 Cinema: {provider_label}\n"
             f"📅 Release Date: {m['release_date']}\n\n"
-            f"🔗 Check showtimes: http://localhost:3000/movies/{m['id']}"
+            f"🔗 Check showtimes: https://screenscout.live/movies/{m['id']}"
         )
 
         self.assertIn("Hello @john_doe", msg)
         self.assertIn("Dune: Part Two", msg)
         self.assertIn("Golden Village", msg)
         self.assertIn("Now Showing", msg)
-        self.assertIn("http://localhost:3000/movies/42", msg)
+        self.assertIn("https://screenscout.live/movies/42", msg)
 
     def test_advance_sales_message_formatting(self):
         recipient = "@john_doe"
@@ -71,7 +71,7 @@ class TestSubscriptionMatchingLogic(unittest.TestCase):
             f"📌 Status: {status_label}\n"
             f"🏢 Cinema: {provider_label}\n"
             f"📅 Release Date: {m['release_date']}\n\n"
-            f"🔗 Check showtimes: http://localhost:3000/movies/{m['id']}"
+            f"🔗 Check showtimes: https://screenscout.live/movies/{m['id']}"
         )
 
         self.assertIn("Advance Sales", msg)
@@ -108,7 +108,7 @@ class TestSubscriptionMatchingLogic(unittest.TestCase):
             msg_lines.append(
                 f"{i}. 🎥 *{m['title']}*\n"
                 f"   🏢 {provider_label} • 📌 {status_label}\n"
-                f"   📅 {m['release_date']} • 🔗 http://localhost:3000/movies/{m['id']}\n"
+                f"   📅 {m['release_date']} • 🔗 https://screenscout.live/movies/{m['id']}\n"
             )
         msg = "\n".join(msg_lines)
 

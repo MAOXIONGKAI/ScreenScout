@@ -43,6 +43,8 @@ services:
       PORT: 8080
       JWT_SECRET: ${JWT_SECRET:-screenscout-super-secret-key-prod-2026}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-8741735560:AAHEXG5BgqrDFZmPHd4ADL54P_O-RGt6unQ}
+      FRONTEND_URL: ${FRONTEND_URL:-https://screenscout.live}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://screenscout.live}
       NOTIFICATION_SERVICE_URL: http://notification-service:8085/api/notify
       NOTIFICATION_STREAM_NAME: screenscout:notifications:stream
       CACHE_MOVIE_LIST_TTL: 5m
@@ -67,6 +69,8 @@ services:
       REDIS_URL: redis://redis:6379
       PORT: 8085
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-8741735560:AAHEXG5BgqrDFZmPHd4ADL54P_O-RGt6unQ}
+      FRONTEND_URL: ${FRONTEND_URL:-https://screenscout.live}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://screenscout.live}
       NOTIFICATION_STREAM_NAME: screenscout:notifications:stream
     volumes:
       - .:/app
