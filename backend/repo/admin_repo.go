@@ -31,11 +31,11 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 	query := `
 	SELECT 
 		(SELECT COUNT(*) FROM movies) AS total_movies,
-		(SELECT COUNT(*) FROM movies WHERE release_date IS NULL OR release_date <= CURRENT_DATE) AS now_showing,
-		(SELECT COUNT(*) FROM movies WHERE release_date > CURRENT_DATE) AS coming_soon,
+		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
+		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE NOT EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS coming_soon,
 		(SELECT COUNT(*) FROM cinemas) AS total_cinemas,
 		(SELECT COUNT(DISTINCT name) FROM cinemas) AS total_providers,
-		(SELECT COUNT(*) FROM schedules) AS total_schedules,
+		(SELECT COUNT(*) FROM schedules WHERE start_date > CURRENT_DATE OR (start_date = CURRENT_DATE AND start_time >= CURRENT_TIME)) AS total_schedules,
 		(SELECT COUNT(*) FROM users) AS total_users,
 		(SELECT COUNT(*) FROM users WHERE role = 'admin') AS total_admins,
 		(SELECT COUNT(*) FROM users WHERE role != 'admin' OR role IS NULL) AS total_members,
@@ -102,12 +102,12 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 	// Provider breakdown: Movies
 	providerMoviesQuery := `
 	SELECT 
-		UPPER(provider) AS prov_code,
+		UPPER(m.provider) AS prov_code,
 		COUNT(*) AS total_movies,
-		COUNT(*) FILTER (WHERE release_date IS NULL OR release_date <= CURRENT_DATE) AS now_showing,
-		COUNT(*) FILTER (WHERE release_date > CURRENT_DATE) AS coming_soon
-	FROM movies
-	GROUP BY UPPER(provider);
+		COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
+		COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS coming_soon
+	FROM movies m
+	GROUP BY UPPER(m.provider);
 	`
 	movieRows, err := r.Pool.Query(ctx, providerMoviesQuery)
 	movieMap := make(map[string]model.ProviderStat)

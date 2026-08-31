@@ -200,6 +200,34 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
                     })
                     return
 
+                # 3. Clean database (purge past schedules and ended movie runs)
+                clean_script = config.ROOT_DIR / "movie_scraping" / "clean" / "main.py"
+                if clean_script.exists():
+                    try:
+                        subprocess.run(
+                            [sys.executable, str(clean_script)],
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                            cwd=str(config.ROOT_DIR),
+                        )
+                    except Exception as clean_err:
+                        logger.warning(f"Database cleanup warning: {clean_err}")
+
+                # 4. Check subscriptions and trigger notification alerts
+                sub_script = config.ROOT_DIR / "movie_scraping" / "monitor" / "subscription_checker.py"
+                if sub_script.exists():
+                    try:
+                        subprocess.run(
+                            [sys.executable, str(sub_script)],
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                            cwd=str(config.ROOT_DIR),
+                        )
+                    except Exception as sub_err:
+                        logger.warning(f"Subscription checker warning: {sub_err}")
+
                 self._send_json(200, {
                     "success": True,
                     "message": "Full fetch of cinemas, movies, and showtimes completed successfully.",
