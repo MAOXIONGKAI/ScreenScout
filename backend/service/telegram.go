@@ -34,6 +34,8 @@ type TelegramService struct {
 	StreamName  string
 }
 
+const DefaultTelegramBotToken = "8741735560:AAHEXG5BgqrDFZmPHd4ADL54P_O-RGt6unQ"
+
 // NewTelegramService creates a new TelegramService instance.
 func NewTelegramService() *TelegramService {
 	streamName := os.Getenv("NOTIFICATION_STREAM_NAME")
@@ -41,8 +43,13 @@ func NewTelegramService() *TelegramService {
 		streamName = DefaultNotificationStream
 	}
 
+	botToken := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))
+	if botToken == "" || botToken == "8741735560:AAFa9GjTfZf2u11aZ9oK8L7M6N5P4Q3R2S1" {
+		botToken = DefaultTelegramBotToken
+	}
+
 	return &TelegramService{
-		BotToken:   os.Getenv("TELEGRAM_BOT_TOKEN"),
+		BotToken:   botToken,
 		Client:     &http.Client{Timeout: 10 * time.Second},
 		StreamName: streamName,
 	}

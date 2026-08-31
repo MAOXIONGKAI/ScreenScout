@@ -30,7 +30,10 @@ from psycopg2.extras import RealDictCursor
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/screenscout")
 NOTIFICATION_SERVICE_URL = os.getenv("NOTIFICATION_SERVICE_URL", "http://localhost:8085/api/notify")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+DEFAULT_BOT_TOKEN = "8741735560:AAHEXG5BgqrDFZmPHd4ADL54P_O-RGt6unQ"
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+if not TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN == "8741735560:AAFa9GjTfZf2u11aZ9oK8L7M6N5P4Q3R2S1":
+    TELEGRAM_BOT_TOKEN = DEFAULT_BOT_TOKEN
 
 
 def get_db_connection():

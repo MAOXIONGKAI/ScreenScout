@@ -42,7 +42,7 @@ services:
       REDIS_URL: redis://redis:6379
       PORT: 8080
       JWT_SECRET: ${JWT_SECRET:-screenscout-super-secret-key-prod-2026}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-8741735560:AAHEXG5BgqrDFZmPHd4ADL54P_O-RGt6unQ}
       NOTIFICATION_SERVICE_URL: http://notification-service:8085/api/notify
       NOTIFICATION_STREAM_NAME: screenscout:notifications:stream
       CACHE_MOVIE_LIST_TTL: 5m
@@ -66,7 +66,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-screenscout}
       REDIS_URL: redis://redis:6379
       PORT: 8085
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-8741735560:AAHEXG5BgqrDFZmPHd4ADL54P_O-RGt6unQ}
       NOTIFICATION_STREAM_NAME: screenscout:notifications:stream
     volumes:
       - .:/app
