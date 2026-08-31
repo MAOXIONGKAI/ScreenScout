@@ -2,7 +2,7 @@
 FROM golang:1.23-alpine AS builder
 WORKDIR /app
 
-ENV GOTOOLCHAIN=auto
+ENV GOTOOLCHAIN=local
 
 COPY go.mod go.sum ./
 RUN go mod download
