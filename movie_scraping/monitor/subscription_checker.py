@@ -57,6 +57,7 @@ def send_telegram_alert(recipient: str, message: str) -> str:
             "channel_type": "TELEGRAM",
             "message": message,
             "parse_mode": "HTML",
+            "dispatched": "true",
             "created_at": str(time.time()),
             "retry_count": "0",
         })

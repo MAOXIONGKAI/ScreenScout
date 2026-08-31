@@ -1,7 +1,10 @@
+import hashlib
 import html
 import json
 import logging
 import re
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -25,6 +28,10 @@ class TelegramClient:
         self.last_update_id = 0
 
         self.welcomed_users: set = set()
+
+        # Sliding 60-second Deduplication Cache to guarantee exactly-once delivery
+        self._recent_dispatches: Dict[str, float] = {}
+        self._dispatch_lock = threading.Lock()
 
         self._load_cache()
         if self.token:
@@ -380,9 +387,28 @@ class TelegramClient:
     def send_message(self, recipient: str, text: str, parse_mode: str = "HTML") -> Dict[str, Any]:
         """
         Send a notification to a Telegram handle or chat ID.
+        Guarantees exactly-once delivery with a 60-second sliding deduplication window.
         If no token is configured, operates in Simulation Mode and logs message cleanly.
         """
         clean_recipient = recipient.strip()
+
+        # Deduplication check (prevent duplicate messages within 60s sliding window)
+        msg_hash = hashlib.sha256(f"{clean_recipient.lower()}:{text}".encode("utf-8")).hexdigest()
+        now = time.time()
+
+        with self._dispatch_lock:
+            # Prune records older than 60s
+            self._recent_dispatches = {k: ts for k, ts in self._recent_dispatches.items() if now - ts < 60.0}
+            if msg_hash in self._recent_dispatches:
+                logger.info(f"Duplicate notification suppressed for {clean_recipient} (already delivered within last 60s)")
+                return {
+                    "success": True,
+                    "status": "DEDUPLICATED",
+                    "recipient": clean_recipient,
+                    "channel": "TELEGRAM",
+                    "duplicate": True,
+                }
+            self._recent_dispatches[msg_hash] = now
 
         # 1. Simulation Mode if no bot token
         if not self.token:

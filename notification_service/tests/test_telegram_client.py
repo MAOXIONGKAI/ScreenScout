@@ -49,6 +49,17 @@ class TestTelegramClient(unittest.TestCase):
         self.assertEqual(res.get("status"), "SIMULATED")
         self.assertEqual(res.get("recipient"), "@sample_user")
 
+    def test_deduplication_send_message(self):
+        # Consecutive sends with identical recipient and content should be deduplicated
+        client = TelegramClient(token="", cache_file=self.cache_file)
+        res1 = client.send_message("@dup_user", "Movie alert text")
+        self.assertEqual(res1.get("status"), "SIMULATED")
+        self.assertFalse(res1.get("duplicate", False))
+
+        res2 = client.send_message("@dup_user", "Movie alert text")
+        self.assertEqual(res2.get("status"), "DEDUPLICATED")
+        self.assertTrue(res2.get("duplicate"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -172,6 +172,7 @@ func (s *TelegramService) SendNotification(recipient, message string) (string, e
 					"message":      message,
 					"channel_type": "TELEGRAM",
 					"parse_mode":   "HTML",
+					"dispatched":   "true",
 					"created_at":   time.Now().UTC().Format(time.RFC3339),
 					"retry_count":  "0",
 				},

@@ -167,6 +167,14 @@ class NotificationStreamConsumer:
                 self.r.xack(self.stream_name, self.group_name, msg_id)
             return
 
+        # If already dispatched synchronously by caller, acknowledge audit entry without re-sending
+        if str(fields.get("dispatched", "")).lower() == "true":
+            logger.debug(f"Message {msg_id} was dispatched synchronously. Acknowledging audit event.")
+            if self.r:
+                self.r.xack(self.stream_name, self.group_name, msg_id)
+            self.processed_count += 1
+            return
+
         logger.info(f"📨 Processing notification {msg_id} -> {recipient} ({channel_type})")
 
         # Dispatch
