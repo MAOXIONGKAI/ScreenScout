@@ -149,6 +149,16 @@ def check_and_trigger_subscriptions() -> int:
                 updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Reset any chat_id that doesn't strictly match the channel's own handle
+            UPDATE notification_channels nc
+            SET chat_id = NULL
+            WHERE chat_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM telegram_users tu
+                  WHERE LOWER(TRIM(LEADING '@' FROM nc.channel_user_id)) = LOWER(tu.username)
+                    AND nc.chat_id = tu.chat_id
+              );
+
             -- Dynamic link: only set chat_id for each user matching their own Telegram username
             UPDATE notification_channels nc
             SET chat_id = tu.chat_id
