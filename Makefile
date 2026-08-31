@@ -134,6 +134,13 @@ prod-down: ## Stop all production containers
 prod-logs: ## Tail logs across all production containers
 	docker compose -f docker-compose.prod.yml logs -f
 
+prod-scrape: ## Run scrapers inside running production container
+	docker exec screenscout_prod_notif python movie_scraping/cinemas/main.py
+	docker exec screenscout_prod_notif python movie_scraping/movies_and_schedules/main.py
+
+prod-seed: ## Seed authentic test data inside production container
+	docker exec screenscout_prod_notif python scripts/seed_test_data.py
+
 deploy: ## Run turnkey production deployment script
 	./deploy.sh
 
