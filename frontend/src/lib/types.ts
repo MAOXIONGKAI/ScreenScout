@@ -216,4 +216,12 @@ export interface ScrapeResponse {
   flushed_keys_count?: number;
 }
 
+// CleanResponse represents the response from triggering an admin database cleanup
+export interface CleanResponse {
+  success: boolean;
+  message: string;
+  duration_ms?: number;
+  flushed_keys_count?: number;
+}
+
 

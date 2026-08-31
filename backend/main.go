@@ -179,6 +179,7 @@ func main() {
 		{
 			adminGroup.GET("/stats", adminHandler.GetAdminStats)
 			adminGroup.POST("/scrape", adminHandler.TriggerScrape)
+			adminGroup.POST("/clean", adminHandler.CleanDatabase)
 		}
 
 		// User notification settings

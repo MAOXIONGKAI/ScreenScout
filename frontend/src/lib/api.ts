@@ -13,6 +13,7 @@ import {
   MovieReviewsResponse,
   AdminStatsResponse,
   ScrapeResponse,
+  CleanResponse,
 } from "./types";
 
 const API_BASE =
@@ -366,5 +367,24 @@ export async function triggerAdminScrape(token: string): Promise<ScrapeResponse>
   }
   return data;
 }
+
+// triggerAdminClean triggers database cleanup of past schedules and outdated movies (POST /api/admin/clean)
+export async function triggerAdminClean(token: string): Promise<CleanResponse> {
+  const res = await fetch(`${API_BASE}/api/admin/clean`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || data.details || "Failed to trigger database cleanup");
+  }
+  return data;
+}
+
 
 

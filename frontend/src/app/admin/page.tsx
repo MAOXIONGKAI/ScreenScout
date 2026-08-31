@@ -9,6 +9,7 @@ import {
   invalidateAllMovieCache,
   triggerSubscriptionCheck,
   triggerAdminScrape,
+  triggerAdminClean,
 } from "@/lib/api";
 import { AdminStatsResponse } from "@/lib/types";
 import styles from "./page.module.css";
@@ -23,6 +24,7 @@ export default function AdminDashboardPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isActionRunning, setIsActionRunning] = useState<boolean>(false);
   const [isScraping, setIsScraping] = useState<boolean>(false);
+  const [isCleaning, setIsCleaning] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<string>("");
 
   // Live Singapore Clock
@@ -81,6 +83,27 @@ export default function AdminDashboardPage() {
     } finally {
       setIsActionRunning(false);
       setIsScraping(false);
+    }
+  };
+
+  const handleTriggerClean = async () => {
+    if (!token) return;
+    try {
+      setIsActionRunning(true);
+      setIsCleaning(true);
+      setError(null);
+      setToastMessage("⏳ Cleaning database: Purging expired showtimes and past-year movies...");
+      const res = await triggerAdminClean(token);
+      const durationSec = res.duration_ms ? ` in ${(res.duration_ms / 1000).toFixed(1)}s` : "";
+      const cacheNote = res.flushed_keys_count !== undefined ? ` (${res.flushed_keys_count} cache keys cleared)` : "";
+      setToastMessage(`✓ Database cleanup completed successfully${durationSec}!${cacheNote}`);
+      setTimeout(() => setToastMessage(null), 5000);
+      await loadStats();
+    } catch (err: any) {
+      setError("Error cleaning database: " + (err.message || "Unknown error"));
+    } finally {
+      setIsActionRunning(false);
+      setIsCleaning(false);
     }
   };
 
@@ -253,6 +276,15 @@ export default function AdminDashboardPage() {
             >
               <span className={isScraping ? styles.spinningIcon : ""}>{isScraping ? "⏳" : "🔄"}</span>
               <span>{isScraping ? "Refetching Pipeline..." : "Refetch Cinemas, Movies & Schedules"}</span>
+            </button>
+            <button
+              className={`${styles.opBtn} ${styles.cleanDbBtn}`}
+              onClick={handleTriggerClean}
+              disabled={isActionRunning}
+              title="Clean database: Remove past showtime schedules, expired theatrical runs, and past-year records"
+            >
+              <span className={isCleaning ? styles.spinningIcon : ""}>{isCleaning ? "⏳" : "🧹"}</span>
+              <span>{isCleaning ? "Cleaning Database..." : "Clean Database"}</span>
             </button>
             <button
               className={`${styles.opBtn} ${styles.purgeCacheBtn}`}

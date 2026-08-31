@@ -234,6 +234,25 @@
   }
 }
 
+.cleanDbBtn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.3));
+  border-color: rgba(251, 191, 36, 0.5);
+  color: #fde68a;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+}
+
+.cleanDbBtn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(217, 119, 6, 0.5));
+  border-color: rgba(251, 191, 36, 0.85);
+  color: #ffffff;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.35);
+}
+
+.cleanDbBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .purgeCacheBtn {
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.4);

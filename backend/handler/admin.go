@@ -133,6 +133,83 @@ func (h *AdminHandler) TriggerScrape(ctx context.Context, c *app.RequestContext)
 	})
 }
 
+// CleanDatabase handles POST /api/admin/clean
+// Triggers a database cleanup: purges past schedules, past-year movies, and outdated theatrical runs.
+func (h *AdminHandler) CleanDatabase(ctx context.Context, c *app.RequestContext) {
+	startTime := time.Now()
+
+	// 1. Try delegating to dedicated Python notification/scraper service (used in Docker)
+	notifServiceURL := os.Getenv("NOTIFICATION_SERVICE_URL")
+	if notifServiceURL == "" {
+		notifServiceURL = "http://notification-service:8085"
+	}
+	baseURL := strings.TrimSuffix(notifServiceURL, "/api/notify")
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
+	cleanEndpoint := baseURL + "/api/clean"
+
+	client := &http.Client{Timeout: 3 * time.Minute}
+	req, reqErr := http.NewRequestWithContext(ctx, "POST", cleanEndpoint, nil)
+	if reqErr == nil {
+		req.Header.Set("Content-Type", "application/json")
+		resp, respErr := client.Do(req)
+		if respErr == nil {
+			defer resp.Body.Close()
+			body, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode == http.StatusOK {
+				var flushedCount int64
+				if h.Repo.Cache != nil {
+					flushedCount, _ = h.Repo.Cache.InvalidateAllMovies(ctx)
+				}
+				duration := time.Since(startTime)
+				c.JSON(http.StatusOK, map[string]interface{}{
+					"success":            true,
+					"message":            "Database cleanup completed successfully. Outdated schedules and past-year movies removed.",
+					"duration_ms":        duration.Milliseconds(),
+					"flushed_keys_count": flushedCount,
+				})
+				return
+			} else if resp.StatusCode >= 400 && resp.StatusCode < 600 {
+				var errResp map[string]interface{}
+				if err := json.Unmarshal(body, &errResp); err == nil {
+					c.JSON(resp.StatusCode, errResp)
+					return
+				}
+			}
+		}
+	}
+
+	// 2. Fallback to local Python execution for non-containerized/local development
+	pythonBin, rootDir := findPythonAndProjectRoot()
+
+	cleanScript := filepath.Join(rootDir, "movie_scraping", "clean", "main.py")
+	cmdClean := exec.CommandContext(ctx, pythonBin, cleanScript)
+	cmdClean.Dir = rootDir
+	cmdClean.Env = os.Environ()
+	outClean, err := cmdClean.CombinedOutput()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error":   fmt.Sprintf("database cleaner failed: %v", err),
+			"details": string(outClean),
+		})
+		return
+	}
+
+	var flushedCount int64
+	if h.Repo.Cache != nil {
+		flushedCount, _ = h.Repo.Cache.InvalidateAllMovies(ctx)
+	}
+
+	duration := time.Since(startTime)
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"success":            true,
+		"message":            "Database cleanup completed successfully. Outdated schedules and past-year movies removed.",
+		"duration_ms":        duration.Milliseconds(),
+		"flushed_keys_count": flushedCount,
+	})
+}
+
 func findPythonAndProjectRoot() (string, string) {
 	if envRoot := os.Getenv("PROJECT_ROOT"); envRoot != "" {
 		if envPy := os.Getenv("PYTHON_BIN"); envPy != "" {

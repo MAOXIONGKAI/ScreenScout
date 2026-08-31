@@ -233,8 +233,32 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
                     "message": "Full fetch of cinemas, movies, and showtimes completed successfully.",
                     "details": p2.stdout,
                 })
+        # 6. Database Cleanup Trigger: POST /api/clean or /clean
+        if path in ("/api/clean", "/clean"):
+            try:
+                import subprocess
+                clean_script = config.ROOT_DIR / "movie_scraping" / "clean" / "main.py"
+                p = subprocess.run(
+                    [sys.executable, str(clean_script)],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=str(config.ROOT_DIR),
+                )
+                if p.returncode != 0:
+                    self._send_json(500, {
+                        "error": f"Database cleaner failed: {p.stderr or p.stdout}",
+                        "details": p.stdout,
+                    })
+                    return
+
+                self._send_json(200, {
+                    "success": True,
+                    "message": "Database cleanup completed successfully. Outdated schedules and past-year movies removed.",
+                    "details": p.stdout,
+                })
             except Exception as e:
-                self._send_json(500, {"error": f"Failed to execute scrapers: {str(e)}"})
+                self._send_json(500, {"error": f"Failed to execute database cleaner: {str(e)}"})
             return
 
         self._send_json(404, {"error": "Not Found", "path": path})
