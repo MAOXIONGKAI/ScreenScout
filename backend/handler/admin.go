@@ -1,12 +1,16 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -41,9 +45,51 @@ func (h *AdminHandler) GetAdminStats(ctx context.Context, c *app.RequestContext)
 func (h *AdminHandler) TriggerScrape(ctx context.Context, c *app.RequestContext) {
 	startTime := time.Now()
 
+	// 1. Try delegating to dedicated Python notification/scraper service (used in Docker)
+	notifServiceURL := os.Getenv("NOTIFICATION_SERVICE_URL")
+	if notifServiceURL == "" {
+		notifServiceURL = "http://notification-service:8085"
+	}
+	baseURL := strings.TrimSuffix(notifServiceURL, "/api/notify")
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
+	scrapeEndpoint := baseURL + "/api/scrape"
+
+	client := &http.Client{Timeout: 8 * time.Minute}
+	req, reqErr := http.NewRequestWithContext(ctx, "POST", scrapeEndpoint, bytes.NewBufferString(`{"provider":"all"}`))
+	if reqErr == nil {
+		req.Header.Set("Content-Type", "application/json")
+		resp, respErr := client.Do(req)
+		if respErr == nil {
+			defer resp.Body.Close()
+			body, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode == http.StatusOK {
+				var flushedCount int64
+				if h.Repo.Cache != nil {
+					flushedCount, _ = h.Repo.Cache.InvalidateAllMovies(ctx)
+				}
+				duration := time.Since(startTime)
+				c.JSON(http.StatusOK, map[string]interface{}{
+					"success":            true,
+					"message":            "Full fetch of cinemas, movies, and showtimes completed successfully.",
+					"duration_ms":        duration.Milliseconds(),
+					"flushed_keys_count": flushedCount,
+				})
+				return
+			} else if resp.StatusCode >= 400 && resp.StatusCode < 600 {
+				var errResp map[string]interface{}
+				if err := json.Unmarshal(body, &errResp); err == nil {
+					c.JSON(resp.StatusCode, errResp)
+					return
+				}
+			}
+		}
+	}
+
+	// 2. Fallback to local Python execution for non-containerized/local development
 	pythonBin, rootDir := findPythonAndProjectRoot()
 
-	// 1. Scrape Cinema Locations
+	// 2a. Scrape Cinema Locations
 	cinemasScript := filepath.Join(rootDir, "movie_scraping", "cinemas", "main.py")
 	cmdCinemas := exec.CommandContext(ctx, pythonBin, cinemasScript, "--provider", "all")
 	cmdCinemas.Dir = rootDir
@@ -57,7 +103,7 @@ func (h *AdminHandler) TriggerScrape(ctx context.Context, c *app.RequestContext)
 		return
 	}
 
-	// 2. Scrape Movies & Schedules
+	// 2b. Scrape Movies & Schedules
 	moviesScript := filepath.Join(rootDir, "movie_scraping", "movies_and_schedules", "main.py")
 	cmdMovies := exec.CommandContext(ctx, pythonBin, moviesScript, "--provider", "all")
 	cmdMovies.Dir = rootDir
@@ -71,7 +117,7 @@ func (h *AdminHandler) TriggerScrape(ctx context.Context, c *app.RequestContext)
 		return
 	}
 
-	// 3. Purge Movie Cache
+	// 2c. Purge Movie Cache
 	var flushedCount int64
 	if h.Repo.Cache != nil {
 		flushedCount, _ = h.Repo.Cache.InvalidateAllMovies(ctx)

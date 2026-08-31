@@ -162,6 +162,53 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"ok": True})
             return
 
+        # 5. On-Demand Scraper Pipeline Trigger: POST /api/scrape or /scrape
+        if path in ("/api/scrape", "/scrape"):
+            provider = payload.get("provider", "all").lower()
+            try:
+                import subprocess
+
+                # 1. Scrape Cinemas
+                cinemas_script = config.ROOT_DIR / "movie_scraping" / "cinemas" / "main.py"
+                p1 = subprocess.run(
+                    [sys.executable, str(cinemas_script), "--provider", provider],
+                    capture_output=True,
+                    text=True,
+                    timeout=180,
+                    cwd=str(config.ROOT_DIR),
+                )
+                if p1.returncode != 0:
+                    self._send_json(500, {
+                        "error": f"Cinema scraper failed: {p1.stderr or p1.stdout}",
+                        "details": p1.stdout,
+                    })
+                    return
+
+                # 2. Scrape Movies and Schedules
+                movies_script = config.ROOT_DIR / "movie_scraping" / "movies_and_schedules" / "main.py"
+                p2 = subprocess.run(
+                    [sys.executable, str(movies_script), "--provider", provider],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    cwd=str(config.ROOT_DIR),
+                )
+                if p2.returncode != 0:
+                    self._send_json(500, {
+                        "error": f"Movie scraper failed: {p2.stderr or p2.stdout}",
+                        "details": p2.stdout,
+                    })
+                    return
+
+                self._send_json(200, {
+                    "success": True,
+                    "message": "Full fetch of cinemas, movies, and showtimes completed successfully.",
+                    "details": p2.stdout,
+                })
+            except Exception as e:
+                self._send_json(500, {"error": f"Failed to execute scrapers: {str(e)}"})
+            return
+
         self._send_json(404, {"error": "Not Found", "path": path})
 
     def log_message(self, format, *args):
