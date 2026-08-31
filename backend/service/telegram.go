@@ -203,11 +203,6 @@ func (s *TelegramService) SendNotification(recipient, message string) (string, e
 	// 2. Secondary: Fallback to direct Telegram Bot API
 	if s.BotToken != "" {
 		targetID := recipient
-		cleanTarget := strings.ToLower(strings.TrimPrefix(recipient, "@"))
-		if cleanTarget == "xxg_yxx" {
-			targetID = "1908248342"
-		}
-
 		apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", s.BotToken)
 		directPayload := map[string]string{
 			"chat_id":    targetID,

@@ -34,9 +34,6 @@ class TelegramClient:
 
     def _load_cache(self) -> None:
         """Load cached username -> chat_id mappings and welcomed users from disk and PostgreSQL."""
-        # Seed known mappings
-        self.username_to_chat_id["xxg_yxx"] = 1908248342
-
         # 1. Load from disk cache
         if self.cache_file.exists():
             try:

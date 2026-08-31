@@ -62,14 +62,12 @@ func (r *SubscriptionRepo) EnsureSubscriptionTables(ctx context.Context) error {
 		updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 
-	INSERT INTO telegram_users (username, chat_id, first_name)
-	VALUES ('xxg_yxx', 1908248342, 'X')
-	ON CONFLICT (username) DO UPDATE SET chat_id = EXCLUDED.chat_id;
-
-	UPDATE notification_channels
-	SET chat_id = 1908248342
-	WHERE (LOWER(TRIM(LEADING '@' FROM channel_user_id)) = 'xxg_yxx' OR chat_id IS NULL)
-	  AND channel_type = 'TELEGRAM';
+	-- Dynamic link: only set chat_id for each user matching their own Telegram username
+	UPDATE notification_channels nc
+	SET chat_id = tu.chat_id
+	FROM telegram_users tu
+	WHERE LOWER(TRIM(LEADING '@' FROM nc.channel_user_id)) = LOWER(tu.username)
+	  AND nc.channel_type = 'TELEGRAM';
 
 	CREATE TABLE IF NOT EXISTS subscriptions (
 		id                  BIGINT PRIMARY KEY,
@@ -175,7 +173,7 @@ func (r *SubscriptionRepo) UpsertNotificationChannel(ctx context.Context, userID
 		ON CONFLICT (user_id, channel_type)
 		DO UPDATE SET
 			channel_user_id = EXCLUDED.channel_user_id,
-			chat_id = COALESCE(EXCLUDED.chat_id, notification_channels.chat_id),
+			chat_id = EXCLUDED.chat_id,
 			is_enabled = EXCLUDED.is_enabled,
 			updated_at = CURRENT_TIMESTAMP
 		RETURNING id, user_id, channel_type, channel_user_id, chat_id, is_enabled, created_at, updated_at
