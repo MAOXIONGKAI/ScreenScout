@@ -12,6 +12,7 @@ import {
   createSubscription,
   deleteSubscription,
   toggleSubscription,
+  triggerSubscriptionScan,
 } from "@/lib/api";
 import { NotificationChannel, Subscription, MatchedMovieItem } from "@/lib/types";
 import styles from "./page.module.css";
@@ -25,6 +26,7 @@ export default function MonitoringsPage() {
   const [botInfo, setBotInfo] = useState<{ configured: boolean; bot_username?: string } | null>(null);
   const [savingChannel, setSavingChannel] = useState(false);
   const [testingNotification, setTestingNotification] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [channelSuccess, setChannelSuccess] = useState("");
   const [channelError, setChannelError] = useState("");
 
@@ -299,9 +301,39 @@ export default function MonitoringsPage() {
       setSubscriptions((prev) =>
         prev.map((s) => (s.id === id ? updated : s))
       );
+      if (updated.triggered_at) {
+        showToast(`Matched movie found! Alert dispatched to Telegram.`, "Alert Triggered", "success");
+      }
     } catch (err: any) {
       const msg = err.message || "Failed to update subscription";
       showToast(msg, "Action Restricted", "error");
+    }
+  };
+
+  // Handle Scan Active Tasks Now
+  const handleScanActiveTasks = async () => {
+    if (!token) return;
+    setIsScanning(true);
+    try {
+      const res = await triggerSubscriptionScan(token);
+      await loadUserData();
+      if (res.triggered_count > 0) {
+        showToast(
+          `Evaluated ${res.checked_count} active task(s). ${res.triggered_count} alert(s) dispatched to Telegram!`,
+          "Screening Match Detected",
+          "success"
+        );
+      } else {
+        showToast(
+          `Evaluated ${res.checked_count} active monitoring task(s). No new screenings published yet.`,
+          "Monitoring Up-to-Date",
+          "info"
+        );
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to scan subscriptions", "Scan Failed", "error");
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -639,28 +671,50 @@ export default function MonitoringsPage() {
           </form>
 
           {/* Subscriptions Tabs */}
-          <div className={styles.subTabs}>
-            <button
-              className={`${styles.subTab} ${activeTab === "active" ? styles.activeSubTab : ""}`}
-              onClick={() => setActiveTab("active")}
-            >
-              <span>Active Monitoring</span>
-              <span className={styles.countBadge}>{activeSubs.length}</span>
-            </button>
-            <button
-              className={`${styles.subTab} ${activeTab === "disabled" ? styles.activeSubTab : ""}`}
-              onClick={() => setActiveTab("disabled")}
-            >
-              <span>Disabled Tasks</span>
-              <span className={styles.countBadge}>{disabledSubs.length}</span>
-            </button>
-            <button
-              className={`${styles.subTab} ${activeTab === "triggered" ? styles.activeSubTab : ""}`}
-              onClick={() => setActiveTab("triggered")}
-            >
-              <span>Triggered History</span>
-              <span className={styles.countBadge}>{triggeredSubs.length}</span>
-            </button>
+          <div className={styles.subTabsWrapper}>
+            <div className={styles.subTabs}>
+              <button
+                className={`${styles.subTab} ${activeTab === "active" ? styles.activeSubTab : ""}`}
+                onClick={() => setActiveTab("active")}
+              >
+                <span>Active Monitoring</span>
+                <span className={styles.countBadge}>{activeSubs.length}</span>
+              </button>
+              <button
+                className={`${styles.subTab} ${activeTab === "disabled" ? styles.activeSubTab : ""}`}
+                onClick={() => setActiveTab("disabled")}
+              >
+                <span>Disabled Tasks</span>
+                <span className={styles.countBadge}>{disabledSubs.length}</span>
+              </button>
+              <button
+                className={`${styles.subTab} ${activeTab === "triggered" ? styles.activeSubTab : ""}`}
+                onClick={() => setActiveTab("triggered")}
+              >
+                <span>Triggered History</span>
+                <span className={styles.countBadge}>{triggeredSubs.length}</span>
+              </button>
+            </div>
+            {activeSubs.length > 0 && (
+              <button
+                className={styles.scanTasksBtn}
+                onClick={handleScanActiveTasks}
+                disabled={isScanning}
+                title="Scan all active monitoring tasks against latest cinema showtimes now"
+              >
+                {isScanning ? (
+                  <>
+                    <span className={styles.spinner} />
+                    <span>Scanning...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>⚡</span>
+                    <span>Scan Active Tasks</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Tab Content */}

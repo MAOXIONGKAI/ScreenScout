@@ -626,11 +626,48 @@
 }
 
 /* Subscriptions Tabs */
+.subTabsWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
 .subTabs {
   display: flex;
   gap: var(--space-xs);
-  border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: var(--space-lg);
+}
+
+.scanTasksBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: var(--radius-full);
+  color: #c084fc;
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  margin-bottom: 6px;
+}
+
+.scanTasksBtn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(168, 85, 247, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.scanTasksBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .subTab {

@@ -267,6 +267,20 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(500, {"error": f"Failed to execute database cleaner: {str(e)}"})
             return
 
+        # 7. Immediate Subscription Check: POST /api/subscriptions/check
+        if path in ("/api/subscriptions/check", "/subscriptions/check"):
+            try:
+                from movie_scraping.monitor.subscription_checker import check_and_trigger_subscriptions
+                triggered = check_and_trigger_subscriptions()
+                self._send_json(200, {
+                    "success": True,
+                    "triggered_count": triggered,
+                    "message": f"Checked active subscriptions. Triggered {triggered} alert(s).",
+                })
+            except Exception as e:
+                self._send_json(500, {"error": f"Failed to check subscriptions: {str(e)}"})
+            return
+
         self._send_json(404, {"error": "Not Found", "path": path})
 
     def log_message(self, format, *args):
@@ -287,6 +301,18 @@ def _poll_telegram_updates_loop():
         time.sleep(3)
 
 
+def _periodic_subscription_monitor_loop():
+    """Background daemon thread to periodically evaluate active subscriptions against movies in DB."""
+    time.sleep(5)  # Initial grace period for DB initialization
+    while True:
+        try:
+            from movie_scraping.monitor.subscription_checker import check_and_trigger_subscriptions
+            check_and_trigger_subscriptions()
+        except Exception as e:
+            logger.debug(f"Periodic subscription check error: {e}")
+        time.sleep(30)
+
+
 def run_server(host: str = config.HOST, port: int = config.PORT):
     server_address = (host, port)
     ThreadingHTTPServer.allow_reuse_address = True
@@ -298,6 +324,10 @@ def run_server(host: str = config.HOST, port: int = config.PORT):
     # Start background Telegram update polling thread
     poller = threading.Thread(target=_poll_telegram_updates_loop, daemon=True, name="TelegramUpdatePoller")
     poller.start()
+
+    # Start background periodic subscription monitoring thread (runs every 30 seconds)
+    monitor_thread = threading.Thread(target=_periodic_subscription_monitor_loop, daemon=True, name="SubscriptionMonitor")
+    monitor_thread.start()
 
     # Start background Redis Stream consumer
     stream_consumer.start()

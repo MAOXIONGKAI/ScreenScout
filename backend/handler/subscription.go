@@ -382,6 +382,50 @@ func (h *SubscriptionHandler) ToggleSubscription(ctx context.Context, c *app.Req
 		return
 	}
 
+	// If reactivated (is_active is now true), check if matching movies exist in DB and trigger alert
+	if sub.IsActive {
+		matchingMovies, mErr := h.SubRepo.FindMatchingMovies(ctx, sub.MovieQuery)
+		if mErr == nil && len(matchingMovies) > 0 {
+			user, _ := h.UserRepo.GetUserByID(ctx, userID)
+			username := "User"
+			if user != nil {
+				username = user.Username
+			}
+
+			ch, chErr := h.SubRepo.GetNotificationChannel(ctx, userID, "TELEGRAM")
+			recipient := "@" + username
+			if chErr == nil && ch != nil && ch.ChannelUserID != "" {
+				recipient = ch.ChannelUserID
+			}
+
+			msg := service.FormatMovieAlertMessage(username, sub.MovieQuery, matchingMovies)
+			status, _ := h.Telegram.SendNotification(recipient, msg)
+
+			_ = h.SubRepo.TriggerSubscriptionWithMovies(ctx, sub.ID, matchingMovies, userID, "TELEGRAM", recipient, msg, status)
+
+			sub.IsActive = false
+			firstID := matchingMovies[0].ID
+			firstTitle := matchingMovies[0].Title
+			sub.MatchedMovieID = &firstID
+			sub.MatchedMovieTitle = &firstTitle
+			sub.MatchedMovies = make([]model.MatchedMovieItem, 0, len(matchingMovies))
+			for _, m := range matchingMovies {
+				posterStr := ""
+				if m.PosterURL != nil {
+					posterStr = *m.PosterURL
+				}
+				sub.MatchedMovies = append(sub.MatchedMovies, model.MatchedMovieItem{
+					ID:          m.ID,
+					Title:       m.Title,
+					Provider:    m.Provider,
+					Status:      m.Status,
+					ReleaseDate: m.ReleaseDate,
+					PosterURL:   posterStr,
+				})
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, sub)
 }
 

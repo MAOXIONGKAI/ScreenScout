@@ -257,6 +257,23 @@ export async function toggleSubscription(
   return data;
 }
 
+export async function triggerSubscriptionScan(
+  token: string
+): Promise<{ checked_count: number; triggered_count: number }> {
+  const res = await fetch(`${API_BASE}/api/subscriptions/check`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to scan subscriptions");
+  }
+  return data;
+}
+
 // Movie Reviews API
 export async function fetchMovieReviews(
   movieId: number,
