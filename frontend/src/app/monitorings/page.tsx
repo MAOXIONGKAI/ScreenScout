@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import {
   fetchNotificationChannel,
   saveNotificationChannel,
+  testNotificationChannel,
   fetchSubscriptions,
   createSubscription,
   deleteSubscription,
@@ -21,6 +22,7 @@ export default function MonitoringsPage() {
   const [channel, setChannel] = useState<NotificationChannel | null>(null);
   const [telegramHandle, setTelegramHandle] = useState("");
   const [savingChannel, setSavingChannel] = useState(false);
+  const [testingNotification, setTestingNotification] = useState(false);
   const [channelSuccess, setChannelSuccess] = useState("");
   const [channelError, setChannelError] = useState("");
 
@@ -150,6 +152,41 @@ export default function MonitoringsPage() {
       showToast(msg, "Telegram Handle Not Found", "error");
     } finally {
       setSavingChannel(false);
+    }
+  };
+
+  // Handle Test Telegram Alert
+  const handleTestTelegram = async () => {
+    if (!token) return;
+    setTestingNotification(true);
+    setChannelError("");
+    setChannelSuccess("");
+    try {
+      const res = await testNotificationChannel(token);
+      if (res.success) {
+        setChannelSuccess(`✓ ${res.message || "Test alert delivered to your Telegram!"}`);
+        showToast(
+          res.message || "Test alert delivered! Check your Telegram app.",
+          "Test Ping Dispatched",
+          "success"
+        );
+        setTimeout(() => setChannelSuccess(""), 5000);
+      } else {
+        const errorMsg = res.error || "Failed to deliver test alert.";
+        const hintMsg = res.hint ? `\n💡 ${res.hint}` : "";
+        setChannelError(`${errorMsg}${hintMsg}`);
+        showToast(
+          res.hint || errorMsg,
+          "Telegram Delivery Notice",
+          "warning"
+        );
+      }
+    } catch (err: any) {
+      const msg = err.message || "Failed to dispatch test notification.";
+      setChannelError(msg);
+      showToast(msg, "Delivery Error", "error");
+    } finally {
+      setTestingNotification(false);
     }
   };
 
@@ -527,6 +564,17 @@ export default function MonitoringsPage() {
             >
               {savingChannel ? "Saving..." : "Save Handle"}
             </button>
+            {channel && (
+              <button
+                type="button"
+                className={styles.testHandleBtn}
+                onClick={handleTestTelegram}
+                disabled={testingNotification || savingChannel}
+                title="Send a live test ping to your Telegram account to verify delivery"
+              >
+                {testingNotification ? "Sending Ping..." : "⚡ Test Alert"}
+              </button>
+            )}
           </form>
 
           {channel ? (

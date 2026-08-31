@@ -187,6 +187,7 @@ func main() {
 		{
 			userGroup.GET("/notification-channel", subHandler.GetNotificationChannel)
 			userGroup.POST("/notification-channel", subHandler.UpdateNotificationChannel)
+			userGroup.POST("/notification-channel/test", subHandler.TestNotificationChannel)
 		}
 
 		// Subscription routes

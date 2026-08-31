@@ -344,8 +344,19 @@ class TelegramClient:
             }
 
         # 2. Resolve chat ID
-        chat_id = self.resolve_chat_id(clean_recipient)
-        target = chat_id if chat_id is not None else clean_recipient
+        chat_id = self.resolve_chat_id(clean_recipient, allow_sync=True)
+        if chat_id is None:
+            bot_name = self.get_bot_username() or "The_ScreenScout_Bot"
+            return {
+                "success": False,
+                "status": "FAILED",
+                "recipient": clean_recipient,
+                "channel": "TELEGRAM",
+                "error": f"Chat ID not found for '{clean_recipient}'",
+                "hint": f"User '{clean_recipient}' has not started the Telegram bot yet. Please open https://t.me/{bot_name}, send /start to authorize alerts, then save your handle.",
+            }
+
+        target = chat_id
 
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
         payload = {

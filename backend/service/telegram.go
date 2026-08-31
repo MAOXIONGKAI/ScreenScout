@@ -240,7 +240,7 @@ func (s *TelegramService) ValidateTelegramHandle(ctx context.Context, handle str
 		return "", errors.New("telegram handle cannot be empty")
 	}
 
-	// 1. Numeric chat ID (direct ID)
+	// 1. Numeric chat ID (direct ID, e.g. 123456789)
 	if telegramNumericIDRegex.MatchString(clean) {
 		return clean, nil
 	}
@@ -269,21 +269,10 @@ func (s *TelegramService) ValidateTelegramHandle(ctx context.Context, handle str
 		bodyBytes, readErr := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 		if readErr == nil {
 			html := string(bodyBytes)
-
-			ogTitle := ""
-			ogTitleIdx := strings.Index(html, `meta property="og:title" content="`)
-			if ogTitleIdx != -1 {
-				start := ogTitleIdx + len(`meta property="og:title" content="`)
-				end := strings.Index(html[start:], `"`)
-				if end != -1 {
-					ogTitle = html[start : start+end]
-				}
-			}
-
 			hasPageTitle := strings.Contains(html, `class="tgme_page_title"`)
 
-			// If og:title is default or "Telegram: Contact @...", the handle does not exist on Telegram
-			if !hasPageTitle || ogTitle == "Telegram – a new era of messaging" || strings.HasPrefix(ogTitle, "Telegram: Contact @") {
+			// If hasPageTitle is false, the handle does not exist on Telegram
+			if !hasPageTitle {
 				return "", fmt.Errorf("the Telegram handle '@%s' does not exist. Please check the spelling or start a chat with @The_ScreenScout_Bot first", clean)
 			}
 		}

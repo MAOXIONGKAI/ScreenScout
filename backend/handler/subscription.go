@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -124,6 +125,58 @@ func (h *SubscriptionHandler) UpdateNotificationChannel(ctx context.Context, c *
 	}
 
 	c.JSON(http.StatusOK, ch)
+}
+
+// TestNotificationChannel handles POST /api/user/notification-channel/test
+func (h *SubscriptionHandler) TestNotificationChannel(ctx context.Context, c *app.RequestContext) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	userID := val.(int64)
+
+	ch, err := h.SubRepo.GetNotificationChannel(ctx, userID, "TELEGRAM")
+	if err != nil || ch == nil || ch.ChannelUserID == "" {
+		c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "No Telegram handle registered. Please save your handle first.",
+		})
+		return
+	}
+
+	username := ""
+	if user, uErr := h.UserRepo.GetUserByID(ctx, userID); uErr == nil && user != nil {
+		username = user.Username
+	}
+
+	cleanUser := strings.TrimPrefix(ch.ChannelUserID, "@")
+	displayName := username
+	if displayName == "" {
+		displayName = cleanUser
+	}
+	testMessage := fmt.Sprintf("🎬 *ScreenScout Test Notification*\n\n"+
+		"Hello %s (@%s),\n\n"+
+		"✅ Your Telegram connection is working perfectly!\n"+
+		"You will receive real-time alerts whenever your tracked movie showtimes become available across Singapore cinemas.\n\n"+
+		"🍿 Happy movie hunting!", displayName, cleanUser)
+
+	status, sErr := h.Telegram.SendNotification(ch.ChannelUserID, testMessage)
+	if sErr != nil {
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"success": false,
+			"status":  status,
+			"error":   sErr.Error(),
+			"hint":    "Make sure you have started a chat with @The_ScreenScout_Bot by sending /start in Telegram.",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"status":  status,
+		"message": fmt.Sprintf("Test alert dispatched to %s (Status: %s)", ch.ChannelUserID, status),
+	})
 }
 
 // ListSubscriptions handles GET /api/subscriptions

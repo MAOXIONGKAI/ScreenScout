@@ -158,6 +158,23 @@ export async function saveNotificationChannel(
   return data;
 }
 
+export async function testNotificationChannel(
+  token: string
+): Promise<{ success: boolean; status?: string; message?: string; error?: string; hint?: string }> {
+  const res = await fetch(`${API_BASE}/api/user/notification-channel/test`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok && !data.error) {
+    throw new Error("Failed to dispatch test notification");
+  }
+  return data;
+}
+
 // Subscriptions API
 export async function fetchSubscriptions(
   token: string
