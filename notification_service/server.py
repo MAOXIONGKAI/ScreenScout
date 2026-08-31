@@ -233,6 +233,10 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
                     "message": "Full fetch of cinemas, movies, and showtimes completed successfully.",
                     "details": p2.stdout,
                 })
+            except Exception as e:
+                self._send_json(500, {"error": f"Failed to execute scrapers: {str(e)}"})
+            return
+
         # 6. Database Cleanup Trigger: POST /api/clean or /clean
         if path in ("/api/clean", "/clean"):
             try:
