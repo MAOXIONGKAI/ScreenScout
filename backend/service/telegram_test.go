@@ -59,8 +59,8 @@ func TestFormatMovieAlertMessage_AdvanceSales(t *testing.T) {
 	}
 
 	msg := FormatMovieAlertMessage("bob", "deadpool", movies)
-	if !strings.Contains(msg, "📌 Status: Advance Sales") {
-		t.Errorf("Expected '📌 Status: Advance Sales', got:\n%s", msg)
+	if !strings.Contains(msg, "📌 Status: <b>Advance Sales</b>") {
+		t.Errorf("Expected '📌 Status: <b>Advance Sales</b>', got:\n%s", msg)
 	}
 }
 
@@ -83,7 +83,7 @@ func TestFormatMovieAlertMessage_MultipleMovies(t *testing.T) {
 	}
 
 	msg := FormatMovieAlertMessage("charlie", "avatar", movies)
-	if !strings.Contains(msg, "matched *2* movies") {
+	if !strings.Contains(msg, "matched <b>2</b> movies") {
 		t.Error("Message should state matched count 2")
 	}
 	if !strings.Contains(msg, "Avatar 3") || !strings.Contains(msg, "Avatar 4") {
@@ -99,8 +99,8 @@ func TestFormatWelcomeMessage(t *testing.T) {
 	if !strings.Contains(msg, "Welcome to ScreenScout, X!") {
 		t.Error("Welcome message should contain user name")
 	}
-	if !strings.Contains(msg, "Your Telegram account (@xXG\\_YXx) is now linked") {
-		t.Error("Welcome message should contain escaped handle")
+	if !strings.Contains(msg, "Your Telegram account (@xXG_YXx) is now linked") {
+		t.Error("Welcome message should contain handle")
 	}
 	if !strings.Contains(msg, "Golden Village & Shaw Theatres") {
 		t.Error("Welcome message should list supported cinemas")

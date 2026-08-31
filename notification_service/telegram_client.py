@@ -1,3 +1,4 @@
+import html
 import json
 import logging
 import re
@@ -272,11 +273,11 @@ class TelegramClient:
             logger.debug(f"User @{clean_handle} has already received the welcome message, skipping.")
             return
 
-        escaped_handle = clean_handle.replace("_", "\\_")
-        clean_first = first_name.strip().replace("*", "") if first_name else clean_handle
+        escaped_handle = html.escape(clean_handle)
+        clean_first = html.escape(first_name.strip() if first_name else clean_handle)
 
         welcome_text = (
-            f"🎬 *Welcome to ScreenScout, {clean_first}!*\n\n"
+            f"🎬 <b>Welcome to ScreenScout, {clean_first}!</b>\n\n"
             f"✅ Your Telegram account (@{escaped_handle}) is now linked for real-time movie notifications!\n\n"
             f"You will automatically receive alerts here the moment showtimes or new screenings "
             f"for your subscribed movies are published across Singapore cinemas (Golden Village & Shaw Theatres).\n\n"
@@ -286,7 +287,7 @@ class TelegramClient:
         payload = {
             "chat_id": chat_id,
             "text": welcome_text,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
         }
         delivered = False
         try:
@@ -299,7 +300,7 @@ class TelegramClient:
             logger.info(f"Welcome confirmation delivered to @{clean_handle} (chat_id: {chat_id})")
             delivered = True
         except Exception as e:
-            # Fallback to plain text if markdown parse error occurs
+            # Fallback to plain text if parse error occurs
             try:
                 payload.pop("parse_mode", None)
                 req = urllib.request.Request(
@@ -320,22 +321,22 @@ class TelegramClient:
     def _send_pending_instructions(self, chat_id: int, handle: str, first_name: str) -> None:
         """Send instructions if user clicked /start on bot before saving handle on website."""
         clean_handle = handle.lstrip("@").strip()
-        clean_first = first_name.strip().replace("*", "") if first_name else clean_handle
-        escaped_handle = clean_handle.replace("_", "\\_")
+        clean_first = html.escape(first_name.strip() if first_name else clean_handle)
+        escaped_handle = html.escape(clean_handle)
         frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "https://screenscout.live")).rstrip("/")
 
         msg = (
-            f"👋 *Hello {clean_first}!*\n\n"
-            f"You've connected to *@The_ScreenScout_Bot*! 🎬\n\n"
+            f"👋 <b>Hello {clean_first}!</b>\n\n"
+            f"You've connected to <b>@The_ScreenScout_Bot</b>! 🎬\n\n"
             f"To complete your alert setup, please enter your Telegram username (@{escaped_handle}) "
-            f"in your **Movie Monitorings** dashboard on the ScreenScout website ({frontend_base}/monitorings).\n\n"
+            f"in your <b>Movie Monitorings</b> dashboard on the ScreenScout website (<a href=\"{frontend_base}/monitorings\">{frontend_base}/monitorings</a>).\n\n"
             f"Once saved, you'll receive your welcome confirmation and start getting real-time alerts! ✨"
         )
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
         payload = {
             "chat_id": chat_id,
             "text": msg,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
         }
         try:
             req = urllib.request.Request(
@@ -379,7 +380,7 @@ class TelegramClient:
 
         return None
 
-    def send_message(self, recipient: str, text: str, parse_mode: str = "Markdown") -> Dict[str, Any]:
+    def send_message(self, recipient: str, text: str, parse_mode: str = "HTML") -> Dict[str, Any]:
         """
         Send a notification to a Telegram handle or chat ID.
         If no token is configured, operates in Simulation Mode and logs message cleanly.
@@ -446,11 +447,16 @@ class TelegramClient:
             err_body = e.read().decode("utf-8", errors="ignore")
             logger.warning(f"Telegram API HTTP error {e.code} for {clean_recipient}: {err_body}")
 
-            # If markdown parse error, retry without parse_mode
-            if "can't parse entities" in err_body or "entity" in err_body:
+            # If parse error, retry with clean plain text (strip tags)
+            if "can't parse entities" in err_body or "entity" in err_body or e.code == 400:
                 try:
-                    payload.pop("parse_mode", None)
-                    req_data = json.dumps(payload).encode("utf-8")
+                    plain_text = re.sub(r"<[^>]+>", "", text)
+                    retry_payload = {
+                        "chat_id": target,
+                        "text": plain_text,
+                        "disable_web_page_preview": False,
+                    }
+                    req_data = json.dumps(retry_payload).encode("utf-8")
                     req = urllib.request.Request(url, data=req_data, headers={"Content-Type": "application/json"})
                     with urllib.request.urlopen(req, timeout=12) as resp:
                         resp_data = json.loads(resp.read().decode("utf-8"))

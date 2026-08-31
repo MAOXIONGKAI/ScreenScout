@@ -155,7 +155,7 @@ class NotificationStreamConsumer:
         recipient = fields.get("recipient", "").strip()
         message_text = fields.get("message", "").strip()
         channel_type = fields.get("channel_type", "TELEGRAM").upper()
-        parse_mode = fields.get("parse_mode", "Markdown")
+        parse_mode = fields.get("parse_mode", "HTML")
         retry_count = int(fields.get("retry_count", 0))
 
         if is_retry:

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"os"
@@ -78,12 +79,12 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 	}
 
 	cleanUser := strings.TrimPrefix(strings.TrimSpace(username), "@")
-	escapedUser := strings.ReplaceAll(cleanUser, "_", "\\_")
-	escapedQuery := strings.ReplaceAll(strings.ReplaceAll(movieQuery, "*", ""), "_", "\\_")
+	escapedUser := html.EscapeString(cleanUser)
+	escapedQuery := html.EscapeString(movieQuery)
 
 	base := getFrontendBaseURL()
 	var sb strings.Builder
-	sb.WriteString("🎬 *ScreenScout Movie Alert!*\n\n")
+	sb.WriteString("🎬 <b>ScreenScout Movie Alert!</b>\n\n")
 	sb.WriteString(fmt.Sprintf("Hello @%s,\n", escapedUser))
 
 	if len(movies) == 1 {
@@ -98,16 +99,16 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 		if m.Provider == "SHAW" || m.Provider == "Shaw" {
 			providerStr = "Shaw Theatres"
 		}
-		cleanTitle := strings.ReplaceAll(strings.ReplaceAll(m.Title, "*", ""), "_", "\\_")
+		cleanTitle := html.EscapeString(m.Title)
 
-		sb.WriteString(fmt.Sprintf("Your tracked movie keyword *\"%s\"* is now available!\n\n", escapedQuery))
-		sb.WriteString(fmt.Sprintf("🎥 *%s*\n", cleanTitle))
-		sb.WriteString(fmt.Sprintf("📌 Status: %s\n", statusStr))
-		sb.WriteString(fmt.Sprintf("🏢 Cinema: %s\n", providerStr))
-		sb.WriteString(fmt.Sprintf("📅 Release Date: %s\n\n", m.ReleaseDate))
-		sb.WriteString(fmt.Sprintf("🔗 Check showtimes: %s/movies/%d", base, m.ID))
+		sb.WriteString(fmt.Sprintf("Your tracked movie keyword <b>\"%s\"</b> is now available!\n\n", escapedQuery))
+		sb.WriteString(fmt.Sprintf("🎥 <b>%s</b>\n", cleanTitle))
+		sb.WriteString(fmt.Sprintf("📌 Status: <b>%s</b>\n", statusStr))
+		sb.WriteString(fmt.Sprintf("🏢 Cinema: <b>%s</b>\n", providerStr))
+		sb.WriteString(fmt.Sprintf("📅 Release Date: %s\n\n", html.EscapeString(m.ReleaseDate)))
+		sb.WriteString(fmt.Sprintf("🔗 <a href=\"%s/movies/%d\">Check Showtimes & Cinema Schedules</a>", base, m.ID))
 	} else {
-		sb.WriteString(fmt.Sprintf("Your tracked movie keyword *\"%s\"* matched *%d* movies!\n\n", escapedQuery, len(movies)))
+		sb.WriteString(fmt.Sprintf("Your tracked movie keyword <b>\"%s\"</b> matched <b>%d</b> movies!\n\n", escapedQuery, len(movies)))
 		for i, m := range movies {
 			statusStr := "Now Showing"
 			if m.Status == "advance_sales" {
@@ -119,11 +120,11 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 			if m.Provider == "SHAW" || m.Provider == "Shaw" {
 				providerStr = "Shaw Theatres"
 			}
-			cleanTitle := strings.ReplaceAll(strings.ReplaceAll(m.Title, "*", ""), "_", "\\_")
+			cleanTitle := html.EscapeString(m.Title)
 
-			sb.WriteString(fmt.Sprintf("%d. 🎥 *%s*\n", i+1, cleanTitle))
+			sb.WriteString(fmt.Sprintf("%d. 🎥 <b>%s</b>\n", i+1, cleanTitle))
 			sb.WriteString(fmt.Sprintf("   🏢 %s • 📌 %s\n", providerStr, statusStr))
-			sb.WriteString(fmt.Sprintf("   📅 %s • 🔗 %s/movies/%d\n\n", m.ReleaseDate, base, m.ID))
+			sb.WriteString(fmt.Sprintf("   📅 %s • 🔗 <a href=\"%s/movies/%d\">Showtimes</a>\n\n", html.EscapeString(m.ReleaseDate), base, m.ID))
 		}
 	}
 
@@ -133,18 +134,16 @@ func FormatMovieAlertMessage(username, movieQuery string, movies []model.Movie) 
 // FormatWelcomeMessage formats the confirmation text when a user links their Telegram account.
 func FormatWelcomeMessage(name, handle string) string {
 	cleanHandle := strings.TrimPrefix(strings.TrimSpace(handle), "@")
-	escapedHandle := strings.ReplaceAll(cleanHandle, "_", "\\_")
 	cleanName := strings.TrimSpace(name)
 	if cleanName == "" {
 		cleanName = cleanHandle
 	}
-	cleanName = strings.ReplaceAll(cleanName, "*", "")
 
-	return fmt.Sprintf("🎬 *Welcome to ScreenScout, %s!*\n\n"+
+	return fmt.Sprintf("🎬 <b>Welcome to ScreenScout, %s!</b>\n\n"+
 		"✅ Your Telegram account (@%s) is now linked for real-time movie notifications!\n\n"+
 		"You will automatically receive alerts here the moment showtimes or new screenings "+
 		"for your subscribed movies are published across Singapore cinemas (Golden Village & Shaw Theatres).\n\n"+
-		"Happy movie hunting! 🍿", cleanName, escapedHandle)
+		"Happy movie hunting! 🍿", html.EscapeString(cleanName), html.EscapeString(cleanHandle))
 }
 
 // SendNotification dispatches a message to the user's Telegram handle or chat ID.
@@ -167,7 +166,7 @@ func (s *TelegramService) SendNotification(recipient, message string) (string, e
 				"recipient":    recipient,
 				"message":      message,
 				"channel_type": "TELEGRAM",
-				"parse_mode":   "Markdown",
+				"parse_mode":   "HTML",
 				"created_at":   time.Now().UTC().Format(time.RFC3339),
 				"retry_count":  "0",
 			},
@@ -188,6 +187,7 @@ func (s *TelegramService) SendNotification(recipient, message string) (string, e
 		"recipient":    recipient,
 		"message":      message,
 		"channel_type": "TELEGRAM",
+		"parse_mode":   "HTML",
 	}
 	jsonData, _ := json.Marshal(payload)
 	resp, err := s.Client.Post(notifyURL, "application/json", bytes.NewBuffer(jsonData))
@@ -214,7 +214,7 @@ func (s *TelegramService) SendNotification(recipient, message string) (string, e
 	directPayload := map[string]string{
 		"chat_id":    recipient,
 		"text":       message,
-		"parse_mode": "Markdown",
+		"parse_mode": "HTML",
 	}
 
 	directData, err := json.Marshal(directPayload)
@@ -249,6 +249,7 @@ func (s *TelegramService) SendDirectNotification(recipient, message string) (map
 		"recipient":    recipient,
 		"message":      message,
 		"channel_type": "TELEGRAM",
+		"parse_mode":   "HTML",
 	}
 	jsonData, _ := json.Marshal(payload)
 	resp, err := s.Client.Post(notifyURL, "application/json", bytes.NewBuffer(jsonData))

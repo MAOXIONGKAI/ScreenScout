@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"os"
 	"strconv"
@@ -184,13 +185,18 @@ func (h *SubscriptionHandler) TestNotificationChannel(ctx context.Context, c *ap
 	if displayName == "" {
 		displayName = cleanUser
 	}
-	testMessage := fmt.Sprintf("🎬 *ScreenScout Test Notification*\n\n"+
+	testMessage := fmt.Sprintf("🎬 <b>ScreenScout Test Notification</b>\n\n"+
 		"Hello %s (@%s),\n\n"+
 		"✅ Your Telegram connection is working perfectly!\n"+
 		"You will receive real-time alerts whenever your tracked movie showtimes become available across Singapore cinemas.\n\n"+
-		"🍿 Happy movie hunting!", displayName, cleanUser)
+		"🍿 Happy movie hunting!", html.EscapeString(displayName), html.EscapeString(cleanUser))
 
-	res, sErr := h.Telegram.SendDirectNotification(ch.ChannelUserID, testMessage)
+	targetRecipient := ch.ChannelUserID
+	if ch.ChatID != nil && *ch.ChatID != 0 {
+		targetRecipient = fmt.Sprintf("%d", *ch.ChatID)
+	}
+
+	res, sErr := h.Telegram.SendDirectNotification(targetRecipient, testMessage)
 	if sErr != nil {
 		hint := ""
 		if res != nil {

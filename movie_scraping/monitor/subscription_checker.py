@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import time
+import html
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import urllib.request
@@ -42,11 +43,9 @@ def get_db_connection():
 
 def send_telegram_alert(recipient: str, message: str) -> str:
     """
-    Dispatches a Telegram alert.
-    Prioritizes publishing to the Redis Stream (asynchronous, non-blocking queue),
-    falling back to the HTTP notification service, and finally direct Telegram client.
+    Deliver a notification via Redis Stream, Notification Service HTTP, or direct TelegramClient.
     """
-    # 1. Primary: Publish to Redis Stream
+    # 1. Primary: Redis Stream publish
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
     stream_name = os.getenv("NOTIFICATION_STREAM_NAME", "screenscout:notifications:stream")
     try:
@@ -56,7 +55,7 @@ def send_telegram_alert(recipient: str, message: str) -> str:
             "recipient": recipient,
             "channel_type": "TELEGRAM",
             "message": message,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "created_at": str(time.time()),
             "retry_count": "0",
         })
@@ -69,7 +68,7 @@ def send_telegram_alert(recipient: str, message: str) -> str:
         "recipient": recipient,
         "channel_type": "TELEGRAM",
         "message": message,
-        "parse_mode": "Markdown",
+        "parse_mode": "HTML",
     }
     json_bytes = json.dumps(payload_data).encode("utf-8")
 
@@ -92,11 +91,11 @@ def send_telegram_alert(recipient: str, message: str) -> str:
         # Fallback to direct client
         pass
 
-    # 2. Resilient Direct Telegram Client Fallback
+    # 3. Resilient Direct Telegram Client Fallback
     try:
         from notification_service.telegram_client import TelegramClient
         client = TelegramClient()
-        res = client.send_message(recipient, message)
+        res = client.send_message(recipient, message, parse_mode="HTML")
         if res.get("success"):
             status = res.get("status", "SENT")
             print(f"[Direct Telegram Client] Delivered alert to {recipient} (Status: {status})")
@@ -241,42 +240,42 @@ def check_and_trigger_subscriptions() -> int:
             if not matched_movies:
                 continue
 
-            # Format Telegram Alert Message
-            escaped_handle = sub['recipient'].replace('_', '\\_')
-            escaped_query = sub['movie_query'].replace('*', '').replace('_', '\\_')
+            # Format Telegram Alert Message (HTML Mode)
+            escaped_handle = html.escape(sub['recipient'])
+            escaped_query = html.escape(sub['movie_query'])
             frontend_base = os.getenv("FRONTEND_URL", os.getenv("NEXT_PUBLIC_API_URL", "https://screenscout.live")).rstrip("/")
 
             if len(matched_movies) == 1:
                 m = matched_movies[0]
                 status_label = "Now Showing" if m["status"] == "now_showing" else ("Advance Sales" if m["status"] == "advance_sales" else "Coming Soon")
                 provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
-                clean_title = m["title"].replace('*', '').replace('_', '\\_').strip()
+                clean_title = html.escape(m["title"].strip())
 
                 msg = (
-                    f"🎬 *ScreenScout Movie Alert!*\n\n"
+                    f"🎬 <b>ScreenScout Movie Alert!</b>\n\n"
                     f"Hello {escaped_handle},\n"
-                    f"Your tracked movie keyword *\"{escaped_query}\"* is now available!\n\n"
-                    f"🎥 *{clean_title}*\n"
-                    f"📌 Status: {status_label}\n"
-                    f"🏢 Cinema: {provider_label}\n"
-                    f"📅 Release Date: {m['release_date']}\n\n"
-                    f"🔗 Check showtimes: {frontend_base}/movies/{m['id']}"
+                    f"Your tracked movie keyword <b>\"{escaped_query}\"</b> is now available!\n\n"
+                    f"🎥 <b>{clean_title}</b>\n"
+                    f"📌 Status: <b>{status_label}</b>\n"
+                    f"🏢 Cinema: <b>{provider_label}</b>\n"
+                    f"📅 Release Date: {html.escape(str(m['release_date']))}\n\n"
+                    f"🔗 <a href=\"{frontend_base}/movies/{m['id']}\">Check Showtimes & Cinema Schedules</a>"
                 )
                 summary_title = m["title"]
             else:
                 msg_lines = [
-                    f"🎬 *ScreenScout Movie Alert!*\n",
+                    f"🎬 <b>ScreenScout Movie Alert!</b>\n",
                     f"Hello {escaped_handle},",
-                    f"Your tracked movie keyword *\"{escaped_query}\"* matched *{len(matched_movies)}* movies!\n",
+                    f"Your tracked movie keyword <b>\"{escaped_query}\"</b> matched <b>{len(matched_movies)}</b> movies!\n",
                 ]
                 for i, m in enumerate(matched_movies, 1):
                     status_label = "Now Showing" if m["status"] == "now_showing" else ("Advance Sales" if m["status"] == "advance_sales" else "Coming Soon")
                     provider_label = "Golden Village" if m["provider"] == "GV" else "Shaw Theatres"
-                    clean_title = m["title"].replace('*', '').replace('_', '\\_').strip()
+                    clean_title = html.escape(m["title"].strip())
                     msg_lines.append(
-                        f"{i}. 🎥 *{clean_title}*\n"
+                        f"{i}. 🎥 <b>{clean_title}</b>\n"
                         f"   🏢 {provider_label} • 📌 {status_label}\n"
-                        f"   📅 {m['release_date']} • 🔗 {frontend_base}/movies/{m['id']}\n"
+                        f"   📅 {html.escape(str(m['release_date']))} • 🔗 <a href=\"{frontend_base}/movies/{m['id']}\">Showtimes</a>\n"
                     )
                 msg = "\n".join(msg_lines)
                 summary_title = f"{matched_movies[0]['title']} (+{len(matched_movies)-1} more)"
