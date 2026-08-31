@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,17 +41,30 @@ func (r *SubscriptionRepo) EnsureSubscriptionTables(ctx context.Context) error {
 								channel_type IN ('TELEGRAM', 'WECHAT', 'WHATSAPP', 'EMAIL', 'DISCORD')
 							),
 		channel_user_id     VARCHAR(255) NOT NULL,
+		chat_id             BIGINT,
 		is_enabled          BOOLEAN NOT NULL DEFAULT TRUE,
 		created_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore'),
 		updated_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore'),
 		UNIQUE (user_id, channel_type)
 	);
 
+	ALTER TABLE notification_channels ADD COLUMN IF NOT EXISTS chat_id BIGINT;
+
 	CREATE SEQUENCE IF NOT EXISTS notification_channels_id_seq START WITH 1 INCREMENT BY 1;
 	ALTER TABLE notification_channels ALTER COLUMN id SET DEFAULT nextval('notification_channels_id_seq');
 
 	CREATE INDEX IF NOT EXISTS idx_notification_channels_user ON notification_channels(user_id);
 
+	CREATE TABLE IF NOT EXISTS telegram_users (
+		username    VARCHAR(255) PRIMARY KEY,
+		chat_id     BIGINT NOT NULL,
+		first_name  VARCHAR(255),
+		updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	INSERT INTO telegram_users (username, chat_id, first_name)
+	VALUES ('xxg_yxx', 1908248342, 'X')
+	ON CONFLICT (username) DO UPDATE SET chat_id = EXCLUDED.chat_id;
 
 	CREATE TABLE IF NOT EXISTS subscriptions (
 		id                  BIGINT PRIMARY KEY,
@@ -100,7 +114,7 @@ func (r *SubscriptionRepo) EnsureSubscriptionTables(ctx context.Context) error {
 // GetNotificationChannel retrieves a user's notification channel.
 func (r *SubscriptionRepo) GetNotificationChannel(ctx context.Context, userID int64, channelType string) (*model.NotificationChannel, error) {
 	query := `
-		SELECT id, user_id, channel_type, channel_user_id, is_enabled, created_at, updated_at
+		SELECT id, user_id, channel_type, channel_user_id, chat_id, is_enabled, created_at, updated_at
 		FROM notification_channels
 		WHERE user_id = $1 AND channel_type = $2
 		LIMIT 1
@@ -112,6 +126,7 @@ func (r *SubscriptionRepo) GetNotificationChannel(ctx context.Context, userID in
 		&ch.UserID,
 		&ch.ChannelType,
 		&ch.ChannelUserID,
+		&ch.ChatID,
 		&ch.IsEnabled,
 		&ch.CreatedAt,
 		&ch.UpdatedAt,
@@ -132,27 +147,42 @@ func (r *SubscriptionRepo) GetNotificationChannel(ctx context.Context, userID in
 // UpsertNotificationChannel sets or updates a user's notification handle (e.g. Telegram).
 func (r *SubscriptionRepo) UpsertNotificationChannel(ctx context.Context, userID int64, channelType, channelUserID string, isEnabled bool) (*model.NotificationChannel, error) {
 	channelUserID = strings.TrimSpace(channelUserID)
-	if channelType == "TELEGRAM" && !strings.HasPrefix(channelUserID, "@") && !strings.HasPrefix(channelUserID, "-") {
-		channelUserID = "@" + channelUserID
+	cleanName := strings.ToLower(strings.TrimPrefix(channelUserID, "@"))
+
+	var explicitChatID *int64
+	// Check if numeric
+	if numID, err := strconv.ParseInt(channelUserID, 10, 64); err == nil {
+		explicitChatID = &numID
+	} else {
+		// Lookup from telegram_users
+		var dbChatID int64
+		if err := r.Pool.QueryRow(ctx, `SELECT chat_id FROM telegram_users WHERE username = $1`, cleanName).Scan(&dbChatID); err == nil {
+			explicitChatID = &dbChatID
+		}
+		if channelType == "TELEGRAM" && !strings.HasPrefix(channelUserID, "@") && !strings.HasPrefix(channelUserID, "-") {
+			channelUserID = "@" + channelUserID
+		}
 	}
 
 	query := `
-		INSERT INTO notification_channels (user_id, channel_type, channel_user_id, is_enabled, updated_at)
-		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+		INSERT INTO notification_channels (user_id, channel_type, channel_user_id, chat_id, is_enabled, updated_at)
+		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
 		ON CONFLICT (user_id, channel_type)
 		DO UPDATE SET
 			channel_user_id = EXCLUDED.channel_user_id,
+			chat_id = COALESCE(EXCLUDED.chat_id, notification_channels.chat_id),
 			is_enabled = EXCLUDED.is_enabled,
 			updated_at = CURRENT_TIMESTAMP
-		RETURNING id, user_id, channel_type, channel_user_id, is_enabled, created_at, updated_at
+		RETURNING id, user_id, channel_type, channel_user_id, chat_id, is_enabled, created_at, updated_at
 	`
 
 	var ch model.NotificationChannel
-	err := r.Pool.QueryRow(ctx, query, userID, strings.ToUpper(channelType), channelUserID, isEnabled).Scan(
+	err := r.Pool.QueryRow(ctx, query, userID, strings.ToUpper(channelType), channelUserID, explicitChatID, isEnabled).Scan(
 		&ch.ID,
 		&ch.UserID,
 		&ch.ChannelType,
 		&ch.ChannelUserID,
+		&ch.ChatID,
 		&ch.IsEnabled,
 		&ch.CreatedAt,
 		&ch.UpdatedAt,

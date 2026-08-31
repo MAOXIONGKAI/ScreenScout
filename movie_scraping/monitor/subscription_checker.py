@@ -145,6 +145,18 @@ def check_and_trigger_subscriptions() -> int:
 
             CREATE SEQUENCE IF NOT EXISTS notification_channels_id_seq START WITH 1 INCREMENT BY 1;
             ALTER TABLE notification_channels ALTER COLUMN id SET DEFAULT nextval('notification_channels_id_seq');
+            ALTER TABLE notification_channels ADD COLUMN IF NOT EXISTS chat_id BIGINT;
+
+            CREATE TABLE IF NOT EXISTS telegram_users (
+                username    VARCHAR(255) PRIMARY KEY,
+                chat_id     BIGINT NOT NULL,
+                first_name  VARCHAR(255),
+                updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            INSERT INTO telegram_users (username, chat_id, first_name)
+            VALUES ('xxg_yxx', 1908248342, 'X')
+            ON CONFLICT (username) DO UPDATE SET chat_id = EXCLUDED.chat_id;
 
             CREATE TABLE IF NOT EXISTS subscriptions (
                 id                  BIGINT PRIMARY KEY,
@@ -183,7 +195,7 @@ def check_and_trigger_subscriptions() -> int:
         # 1. Fetch all active subscriptions
         cur.execute("""
             SELECT s.id, s.user_id, s.movie_query, s.is_active, u.username,
-                   COALESCE(nc.channel_user_id, '@' || u.username) AS recipient,
+                   COALESCE(CAST(nc.chat_id AS TEXT), nc.channel_user_id, '@' || u.username) AS recipient,
                    COALESCE(nc.is_enabled, TRUE) AS is_enabled
             FROM subscriptions s
             JOIN users u ON s.user_id = u.id

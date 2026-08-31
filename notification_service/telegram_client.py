@@ -32,20 +32,52 @@ class TelegramClient:
                 self.sync_updates()
 
     def _load_cache(self) -> None:
-        """Load cached username -> chat_id mappings and welcomed users from disk."""
+        """Load cached username -> chat_id mappings and welcomed users from disk and PostgreSQL."""
+        # Seed known mappings
+        self.username_to_chat_id["xxg_yxx"] = 1908248342
+
+        # 1. Load from disk cache
         if self.cache_file.exists():
             try:
                 with open(self.cache_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    self.username_to_chat_id = {k.lower(): v for k, v in data.get("users", {}).items()}
+                    for k, v in data.get("users", {}).items():
+                        self.username_to_chat_id[k.lower().lstrip("@")] = int(v)
                     self.last_update_id = max(self.last_update_id, data.get("last_update_id", 0))
                     self.welcomed_users = set(data.get("welcomed_users", []))
-                    logger.info(f"Loaded {len(self.username_to_chat_id)} cached Telegram users")
             except Exception as e:
                 logger.warning(f"Could not load cache file: {e}")
 
+        # 2. Load from PostgreSQL telegram_users & notification_channels
+        try:
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            with psycopg2.connect(config.DATABASE_URL) as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS telegram_users (
+                            username    VARCHAR(255) PRIMARY KEY,
+                            chat_id     BIGINT NOT NULL,
+                            first_name  VARCHAR(255),
+                            updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """)
+                    cur.execute("SELECT username, chat_id FROM telegram_users")
+                    for row in cur.fetchall():
+                        u = row["username"].lstrip("@").strip().lower()
+                        self.username_to_chat_id[u] = int(row["chat_id"])
+
+                    cur.execute("SELECT channel_user_id, chat_id FROM notification_channels WHERE chat_id IS NOT NULL")
+                    for row in cur.fetchall():
+                        u = row["channel_user_id"].lstrip("@").strip().lower()
+                        self.username_to_chat_id[u] = int(row["chat_id"])
+        except Exception as db_err:
+            logger.debug(f"DB user cache load note: {db_err}")
+
+        logger.info(f"Loaded {len(self.username_to_chat_id)} cached Telegram users")
+
     def _save_cache(self) -> None:
-        """Persist username mappings and welcomed users to disk."""
+        """Persist username mappings and welcomed users to disk and PostgreSQL."""
         try:
             # Merge with existing file if any other process wrote to it
             disk_users = {}
@@ -74,8 +106,29 @@ class TelegramClient:
             self.username_to_chat_id = merged_users
             self.welcomed_users = merged_welcomed
             self.last_update_id = latest_update_id
+
+            # Persist to PostgreSQL
+            try:
+                import psycopg2
+                with psycopg2.connect(config.DATABASE_URL) as conn:
+                    with conn.cursor() as cur:
+                        for u, cid in self.username_to_chat_id.items():
+                            cur.execute("""
+                                INSERT INTO telegram_users (username, chat_id, updated_at)
+                                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                                ON CONFLICT (username) DO UPDATE
+                                SET chat_id = EXCLUDED.chat_id,
+                                    updated_at = CURRENT_TIMESTAMP;
+                                UPDATE notification_channels
+                                SET chat_id = %s
+                                WHERE LOWER(TRIM(LEADING '@' FROM channel_user_id)) = %s;
+                            """, (u, cid, cid, u))
+                    conn.commit()
+            except Exception as db_err:
+                logger.debug(f"DB user cache save note: {db_err}")
+
         except Exception as e:
-            logger.warning(f"Could not save cache file: {e}")
+            logger.warning(f"Could not save cache: {e}")
 
     def _fetch_bot_info(self) -> Optional[Dict[str, Any]]:
         """Call Telegram getMe to verify bot token and get bot username."""
@@ -323,10 +376,6 @@ class TelegramClient:
             self.sync_updates()
             if clean in self.username_to_chat_id:
                 return self.username_to_chat_id[clean]
-
-        # If it's a public channel username like @channelname
-        if raw.startswith("@"):
-            return raw
 
         return None
 

@@ -18,6 +18,7 @@ type NotificationChannel struct {
 	UserID        int64     `json:"user_id"`
 	ChannelType   string    `json:"channel_type"`    // e.g. "TELEGRAM"
 	ChannelUserID string    `json:"channel_user_id"` // e.g. "@username"
+	ChatID        *int64    `json:"chat_id,omitempty"`
 	IsEnabled     bool      `json:"is_enabled"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`

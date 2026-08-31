@@ -286,8 +286,12 @@ func (h *SubscriptionHandler) CreateSubscription(ctx context.Context, c *app.Req
 		// Lookup user notification channel
 		ch, chErr := h.SubRepo.GetNotificationChannel(ctx, userID, "TELEGRAM")
 		recipient := "@" + username
-		if chErr == nil && ch != nil && ch.ChannelUserID != "" {
-			recipient = ch.ChannelUserID
+		if chErr == nil && ch != nil {
+			if ch.ChatID != nil && *ch.ChatID != 0 {
+				recipient = fmt.Sprintf("%d", *ch.ChatID)
+			} else if ch.ChannelUserID != "" {
+				recipient = ch.ChannelUserID
+			}
 		}
 
 		msg := service.FormatMovieAlertMessage(username, query, matchingMovies)
@@ -394,8 +398,12 @@ func (h *SubscriptionHandler) ToggleSubscription(ctx context.Context, c *app.Req
 
 			ch, chErr := h.SubRepo.GetNotificationChannel(ctx, userID, "TELEGRAM")
 			recipient := "@" + username
-			if chErr == nil && ch != nil && ch.ChannelUserID != "" {
-				recipient = ch.ChannelUserID
+			if chErr == nil && ch != nil {
+				if ch.ChatID != nil && *ch.ChatID != 0 {
+					recipient = fmt.Sprintf("%d", *ch.ChatID)
+				} else if ch.ChannelUserID != "" {
+					recipient = ch.ChannelUserID
+				}
 			}
 
 			msg := service.FormatMovieAlertMessage(username, sub.MovieQuery, matchingMovies)
@@ -455,8 +463,12 @@ func (h *SubscriptionHandler) CheckSubscriptions(ctx context.Context, c *app.Req
 		// Lookup notification channel
 		recipient := "@" + username
 		ch, chErr := h.SubRepo.GetNotificationChannel(ctx, sub.UserID, "TELEGRAM")
-		if chErr == nil && ch != nil && ch.ChannelUserID != "" {
-			recipient = ch.ChannelUserID
+		if chErr == nil && ch != nil {
+			if ch.ChatID != nil && *ch.ChatID != 0 {
+				recipient = fmt.Sprintf("%d", *ch.ChatID)
+			} else if ch.ChannelUserID != "" {
+				recipient = ch.ChannelUserID
+			}
 		}
 
 		msg := service.FormatMovieAlertMessage(username, sub.MovieQuery, matchingMovies)
