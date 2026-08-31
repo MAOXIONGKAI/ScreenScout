@@ -558,7 +558,8 @@ export default function MovieDetailPage() {
         {/* Reviews & Ratings Section */}
         <ReviewSection
           movieId={id}
-          isComingSoon={movie.status === "coming_soon"}
+          isLocked={movie.status === "coming_soon" || movie.status === "advance_sales"}
+          status={movie.status}
           releaseDate={movie.release_date}
         />
       </div>

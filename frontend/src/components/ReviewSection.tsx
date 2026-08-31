@@ -9,6 +9,8 @@ import styles from "./ReviewSection.module.css";
 interface ReviewSectionProps {
   movieId: number;
   isComingSoon?: boolean;
+  isLocked?: boolean;
+  status?: string;
   releaseDate?: string;
 }
 
@@ -75,9 +77,13 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | stri
 export function ReviewSection({
   movieId,
   isComingSoon = false,
+  isLocked = false,
+  status,
   releaseDate,
 }: ReviewSectionProps) {
   const { user, token, openAuthModal } = useAuth();
+  const isMovieLocked = isLocked || isComingSoon || status === "coming_soon" || status === "advance_sales";
+  const isAdvanceSales = status === "advance_sales";
 
   const [reviewsData, setReviewsData] = useState<MovieReviewsResponse>({
     reviews: [],
@@ -179,8 +185,12 @@ export function ReviewSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isComingSoon) {
-      setErrorMessage("Reviews are locked until this movie is released.");
+    if (isMovieLocked) {
+      setErrorMessage(
+        isAdvanceSales
+          ? "Reviews are locked until this advance sales movie officially premieres in theatres."
+          : "Reviews are locked until this movie is released."
+      );
       return;
     }
 
@@ -277,8 +287,10 @@ export function ReviewSection({
       >
         <div className={styles.sectionTitleRow}>
           <h2 className={styles.sectionTitle}>💬 Audience Reviews & Ratings</h2>
-          {isComingSoon ? (
-            <span className={styles.lockedBadge}>🔒 Coming Soon</span>
+          {isMovieLocked ? (
+            <span className={styles.lockedBadge}>
+              {isAdvanceSales ? "🔒 Advance Sales" : "🔒 Coming Soon"}
+            </span>
           ) : (
             <span className={styles.reviewCountBadge}>
               {allRatingsCount} {allRatingsCount === 1 ? "review" : "reviews"}
@@ -287,7 +299,7 @@ export function ReviewSection({
         </div>
 
         <div className={styles.sectionHeaderRight}>
-          {!isComingSoon && allRatingsCount > 0 && (
+          {!isMovieLocked && allRatingsCount > 0 && (
             <div className={styles.avgRatingPill}>
               <span>★</span>
               <span>{avgRating.toFixed(1)}</span>
@@ -307,16 +319,20 @@ export function ReviewSection({
 
       {!isCollapsed && (
         <div className={styles.reviewsBody}>
-          {/* If movie is Coming Soon, display the locked reviews banner */}
-          {isComingSoon ? (
+          {/* If movie is Coming Soon or Advance Sales, display the locked reviews banner */}
+          {isMovieLocked ? (
             <div className={styles.lockedCard}>
               <div className={styles.lockedContent}>
                 <div className={styles.lockedIcon}>🔒</div>
                 <h3 className={styles.lockedTitle}>
-                  Reviews Locked: Coming Soon
+                  {isAdvanceSales
+                    ? "Reviews Locked: Advance Sales"
+                    : "Reviews Locked: Coming Soon"}
                 </h3>
                 <p className={styles.lockedText}>
-                  This movie has not been released yet. Audience reviews and verified ratings will unlock as soon as screenings begin in theatres!
+                  {isAdvanceSales
+                    ? "Advance tickets are currently on sale for this upcoming release. Audience reviews and verified ratings will unlock as soon as theatrical screenings begin!"
+                    : "This movie has not been released yet. Audience reviews and verified ratings will unlock as soon as screenings begin in theatres!"}
                 </p>
                 {releaseDate && (
                   <div className={styles.lockedDatePill}>
