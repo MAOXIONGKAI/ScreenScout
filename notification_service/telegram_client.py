@@ -19,6 +19,7 @@ class TelegramClient:
         self.token = (token if token is not None else config.TELEGRAM_BOT_TOKEN).strip()
         self.cache_file = cache_file or config.CACHE_FILE
         self.bot_info: Optional[Dict[str, Any]] = None
+        self.bot_error: Optional[str] = None
         self.username_to_chat_id: Dict[str, int] = {}
         self.last_update_id = 0
 
@@ -79,6 +80,7 @@ class TelegramClient:
     def _fetch_bot_info(self) -> Optional[Dict[str, Any]]:
         """Call Telegram getMe to verify bot token and get bot username."""
         if not self.token:
+            self.bot_error = "No TELEGRAM_BOT_TOKEN configured in environment"
             return None
         url = f"https://api.telegram.org/bot{self.token}/getMe"
         try:
@@ -87,9 +89,17 @@ class TelegramClient:
                 data = json.loads(resp.read().decode("utf-8"))
                 if data.get("ok"):
                     self.bot_info = data.get("result")
+                    self.bot_error = None
                     logger.info(f"Telegram Bot connected: @{self.bot_info.get('username')} (ID: {self.bot_info.get('id')})")
                     return self.bot_info
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                self.bot_error = "Unauthorized (HTTP 401): Invalid TELEGRAM_BOT_TOKEN"
+            else:
+                self.bot_error = f"HTTP {e.code}: {e.reason}"
+            logger.error(f"Failed to fetch Telegram bot info: {self.bot_error}")
         except Exception as e:
+            self.bot_error = str(e)
             logger.error(f"Failed to fetch Telegram bot info: {e}")
         return None
 
@@ -409,17 +419,21 @@ class TelegramClient:
                 except Exception as retry_err:
                     logger.error(f"Telegram plain text retry failed: {retry_err}")
 
-            bot_name = self.get_bot_username() or "your bot"
+            bot_name = self.get_bot_username() or "The_ScreenScout_Bot"
             error_hint = ""
-            if "chat not found" in err_body or chat_id is None:
-                error_hint = f"User '{clean_recipient}' has not started the Telegram bot yet. Please send /start to @{bot_name} first."
+            if e.code == 401 or "Unauthorized" in err_body:
+                error_hint = "The TELEGRAM_BOT_TOKEN in .env is invalid or unauthorized. Please check your token with @BotFather."
+            elif "chat not found" in err_body or chat_id is None:
+                error_hint = f"User '{clean_recipient}' has not started the Telegram bot yet. Please open https://t.me/{bot_name}, send /start, then try again."
+            elif "bot was blocked by the user" in err_body:
+                error_hint = f"User '{clean_recipient}' has blocked @{bot_name}. Please unblock the bot in Telegram to receive alerts."
 
             return {
                 "success": False,
                 "status": "FAILED",
                 "recipient": clean_recipient,
                 "channel": "TELEGRAM",
-                "error": err_body,
+                "error": err_body or f"HTTP {e.code}: {e.reason}",
                 "hint": error_hint,
             }
         except Exception as e:

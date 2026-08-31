@@ -7,6 +7,7 @@ import {
   fetchNotificationChannel,
   saveNotificationChannel,
   testNotificationChannel,
+  fetchBotInfo,
   fetchSubscriptions,
   createSubscription,
   deleteSubscription,
@@ -21,6 +22,7 @@ export default function MonitoringsPage() {
   // Notification Channel & Subscriptions State
   const [channel, setChannel] = useState<NotificationChannel | null>(null);
   const [telegramHandle, setTelegramHandle] = useState("");
+  const [botInfo, setBotInfo] = useState<{ configured: boolean; bot_username?: string } | null>(null);
   const [savingChannel, setSavingChannel] = useState(false);
   const [testingNotification, setTestingNotification] = useState(false);
   const [channelSuccess, setChannelSuccess] = useState("");
@@ -95,15 +97,19 @@ export default function MonitoringsPage() {
     if (!token) return;
     setSubsLoading(true);
     try {
-      const [ch, subs] = await Promise.all([
+      const [ch, subs, bInfo] = await Promise.all([
         fetchNotificationChannel(token).catch(() => null),
         fetchSubscriptions(token).catch(() => []),
+        fetchBotInfo().catch(() => null),
       ]);
       if (ch) {
         setChannel(ch);
         setTelegramHandle(ch.channel_user_id);
       } else if (user) {
         setTelegramHandle(`@${user.username}`);
+      }
+      if (bInfo) {
+        setBotInfo(bInfo);
       }
       setSubscriptions(subs);
     } catch (err) {
@@ -512,12 +518,12 @@ export default function MonitoringsPage() {
                   <div>
                     <strong>Start the Bot:</strong> Open{" "}
                     <a
-                      href="https://t.me/The_ScreenScout_Bot"
+                      href={`https://t.me/${(botInfo?.bot_username || "The_ScreenScout_Bot").replace(/^@/, "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.botLink}
                     >
-                      @The_ScreenScout_Bot ↗
+                      {botInfo?.bot_username || "@The_ScreenScout_Bot"} ↗
                     </a>{" "}
                     in Telegram and tap <strong>Start</strong> (<code className={styles.inlineCode}>/start</code>) so Telegram authorizes alerts.
                   </div>
@@ -531,7 +537,7 @@ export default function MonitoringsPage() {
                 <div className={styles.cardStepItem}>
                   <span className={styles.cardStepNum}>3</span>
                   <div>
-                    <strong>Receive Alerts:</strong> When your monitored movies are detected, <strong>@The_ScreenScout_Bot</strong> will message you with direct showtime links!
+                    <strong>Receive Alerts:</strong> When your monitored movies are detected, <strong>{botInfo?.bot_username || "@The_ScreenScout_Bot"}</strong> will message you with direct showtime links!
                   </div>
                 </div>
               </div>

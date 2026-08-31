@@ -230,6 +230,42 @@ func (s *TelegramService) SendNotification(recipient, message string) (string, e
 	return "SENT", nil
 }
 
+// SendDirectNotification synchronously sends a notification via Notification Service HTTP API
+// and returns full diagnostic fields (status, error, hint, chat_id).
+func (s *TelegramService) SendDirectNotification(recipient, message string) (map[string]interface{}, error) {
+	notifyURL := os.Getenv("NOTIFICATION_SERVICE_URL")
+	if notifyURL == "" {
+		notifyURL = "http://localhost:8085/api/notify"
+	}
+
+	payload := map[string]string{
+		"recipient":    recipient,
+		"message":      message,
+		"channel_type": "TELEGRAM",
+	}
+	jsonData, _ := json.Marshal(payload)
+	resp, err := s.Client.Post(notifyURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("notification service unavailable: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var res map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, fmt.Errorf("failed to parse notification response (HTTP %d)", resp.StatusCode)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg, _ := res["error"].(string)
+		if errMsg == "" {
+			errMsg = fmt.Sprintf("notification service returned HTTP %d", resp.StatusCode)
+		}
+		return res, errors.New(errMsg)
+	}
+
+	return res, nil
+}
+
 // ValidateTelegramHandle verifies that a Telegram username has a valid format and exists on Telegram.
 func (s *TelegramService) ValidateTelegramHandle(ctx context.Context, handle string) (string, error) {
 	clean := strings.TrimSpace(handle)

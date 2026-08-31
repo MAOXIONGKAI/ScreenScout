@@ -166,6 +166,9 @@ func main() {
 		api.GET("/cinemas", cinemaHandler.ListCinemas)
 		api.GET("/providers", cinemaHandler.ListProviders)
 
+		// Telegram Bot Info
+		api.GET("/telegram/bot-info", subHandler.GetBotInfo)
+
 		// Auth routes
 		auth := api.Group("/auth")
 		{

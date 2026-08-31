@@ -68,6 +68,8 @@ class NotificationRequestHandler(BaseHTTPRequestHandler):
                 "port": config.PORT,
                 "telegram": {
                     "configured": bool(telegram_client.token),
+                    "authenticated": bool(telegram_client.bot_info),
+                    "bot_error": telegram_client.bot_error,
                     "bot_username": f"@{bot_username}" if bot_username else None,
                     "cached_users_count": len(telegram_client.username_to_chat_id),
                     "cached_users": list(telegram_client.username_to_chat_id.keys()),
@@ -277,9 +279,11 @@ def _poll_telegram_updates_loop():
     while True:
         try:
             if telegram_client.token:
+                if not telegram_client.bot_info:
+                    telegram_client._fetch_bot_info()
                 telegram_client.sync_updates()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Update poller error: {e}")
         time.sleep(3)
 
 

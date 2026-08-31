@@ -175,6 +175,16 @@ export async function testNotificationChannel(
   return data;
 }
 
+export async function fetchBotInfo(): Promise<{ configured: boolean; authenticated?: boolean; bot_error?: string; bot_username?: string; bot_info?: any }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/telegram/bot-info`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {}
+  return { configured: false, bot_username: "@The_ScreenScout_Bot" };
+}
+
 // Subscriptions API
 export async function fetchSubscriptions(
   token: string

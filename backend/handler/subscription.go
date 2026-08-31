@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -28,6 +30,33 @@ func NewSubscriptionHandler(subRepo *repo.SubscriptionRepo, userRepo *repo.UserR
 		UserRepo: userRepo,
 		Telegram: tg,
 	}
+}
+
+// GetBotInfo handles GET /api/telegram/bot-info
+func (h *SubscriptionHandler) GetBotInfo(ctx context.Context, c *app.RequestContext) {
+	notifyURL := os.Getenv("NOTIFICATION_SERVICE_URL")
+	if notifyURL == "" {
+		notifyURL = "http://localhost:8085/api/notify"
+	}
+	baseURL := strings.TrimSuffix(notifyURL, "/api/notify")
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	botInfoURL := baseURL + "/api/telegram/bot-info"
+
+	resp, err := h.Telegram.Client.Get(botInfoURL)
+	if err == nil {
+		defer resp.Body.Close()
+		var res map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err == nil {
+			c.JSON(http.StatusOK, res)
+			return
+		}
+	}
+
+	botUsername := "The_ScreenScout_Bot"
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"configured":   h.Telegram.BotToken != "",
+		"bot_username": "@" + botUsername,
+	})
 }
 
 // GetNotificationChannel handles GET /api/user/notification-channel
@@ -161,21 +190,35 @@ func (h *SubscriptionHandler) TestNotificationChannel(ctx context.Context, c *ap
 		"You will receive real-time alerts whenever your tracked movie showtimes become available across Singapore cinemas.\n\n"+
 		"🍿 Happy movie hunting!", displayName, cleanUser)
 
-	status, sErr := h.Telegram.SendNotification(ch.ChannelUserID, testMessage)
+	res, sErr := h.Telegram.SendDirectNotification(ch.ChannelUserID, testMessage)
 	if sErr != nil {
+		hint := ""
+		if res != nil {
+			if hStr, ok := res["hint"].(string); ok {
+				hint = hStr
+			}
+		}
+		if hint == "" {
+			hint = "Make sure you have started a chat with @The_ScreenScout_Bot by sending /start in Telegram."
+		}
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"success": false,
-			"status":  status,
+			"status":  "FAILED",
 			"error":   sErr.Error(),
-			"hint":    "Make sure you have started a chat with @The_ScreenScout_Bot by sending /start in Telegram.",
+			"hint":    hint,
 		})
 		return
+	}
+
+	status := "SENT"
+	if s, ok := res["status"].(string); ok {
+		status = s
 	}
 
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
 		"status":  status,
-		"message": fmt.Sprintf("Test alert dispatched to %s (Status: %s)", ch.ChannelUserID, status),
+		"message": fmt.Sprintf("Test alert delivered to %s (Status: %s)", ch.ChannelUserID, status),
 	})
 }
 
