@@ -28,6 +28,7 @@ FILM_INFO_API = f"{BASE_URL}/.gv-api/filminfo"
 SCHEDULE_API = f"{BASE_URL}/.gv-api/sessionforfilm"
 SHOWING_NOW_API = f"{BASE_URL}/.gv-api/homenowshowing"
 COMING_SOON_API = f"{BASE_URL}/.gv-api/homecomingsoon"
+ADVANCE_SALES_API = f"{BASE_URL}/.gv-api/homeadvancesales"
 
 SEM = asyncio.Semaphore(5)
 HEADLESS = os.getenv("HEADLESS", "true").lower() in ("true", "1", "yes")
@@ -89,24 +90,42 @@ async def fetch_movie(client: httpx.AsyncClient, movie_id: str) -> Optional[Dict
 
 
 async def fetch_movie_ids(client: httpx.AsyncClient) -> Dict[str, Set[str]]:
-    """Fetch movie IDs from both Now Showing and Coming Soon endpoints."""
+    """Fetch movie IDs from Now Showing, Coming Soon, and Advance Sales endpoints."""
     print("Fetching showing now movies...")
-    showing_now_data = await post_json(client, SHOWING_NOW_API)
+    try:
+        showing_now_data = await post_json(client, SHOWING_NOW_API)
+    except Exception as e:
+        print(f"Warning fetching showing now movies: {e}")
+        showing_now_data = {}
 
     print("Fetching coming soon movies...")
-    coming_soon_data = await post_json(client, COMING_SOON_API)
+    try:
+        coming_soon_data = await post_json(client, COMING_SOON_API)
+    except Exception as e:
+        print(f"Warning fetching coming soon movies: {e}")
+        coming_soon_data = {}
+
+    print("Fetching advance sales movies...")
+    try:
+        advance_sales_data = await post_json(client, ADVANCE_SALES_API)
+    except Exception as e:
+        print(f"Warning fetching advance sales movies: {e}")
+        advance_sales_data = {}
 
     showing_now_ids = extract_film_codes(showing_now_data)
     coming_soon_ids = extract_film_codes(coming_soon_data)
-    all_ids = showing_now_ids | coming_soon_ids
+    advance_sales_ids = extract_film_codes(advance_sales_data)
+    all_ids = showing_now_ids | coming_soon_ids | advance_sales_ids
 
     print(f"Showing now: {len(showing_now_ids)}")
+    print(f"Advance sales: {len(advance_sales_ids)}")
     print(f"Coming soon: {len(coming_soon_ids)}")
     print(f"Total unique movies: {len(all_ids)}")
 
     return {
         "showing_now": showing_now_ids,
         "coming_soon": coming_soon_ids,
+        "advance_sales": advance_sales_ids,
         "all": all_ids,
     }
 
