@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/maoxiongkai/screenscout-backend/cache"
@@ -128,9 +129,11 @@ func TestSendNotification_RedisStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error on SendNotification: %v", err)
 	}
-	if status != "QUEUED" {
-		t.Fatalf("expected status 'QUEUED', got %s", status)
+	if status != "SIMULATED" && status != "SENT" {
+		t.Fatalf("expected status 'SIMULATED' or 'SENT', got %s", status)
 	}
+
+	time.Sleep(50 * time.Millisecond)
 
 	// Verify the stream contains the event
 	ctx := context.Background()

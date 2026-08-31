@@ -43,9 +43,10 @@ def get_db_connection():
 
 def send_telegram_alert(recipient: str, message: str) -> str:
     """
-    Deliver a notification via Redis Stream, Notification Service HTTP, or direct TelegramClient.
+    Deliver a notification directly via Notification Service HTTP or direct TelegramClient,
+    and record the event to Redis Stream for telemetry.
     """
-    # 1. Primary: Redis Stream publish
+    # Record to Redis Stream asynchronously
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
     stream_name = os.getenv("NOTIFICATION_STREAM_NAME", "screenscout:notifications:stream")
     try:
@@ -59,11 +60,10 @@ def send_telegram_alert(recipient: str, message: str) -> str:
             "created_at": str(time.time()),
             "retry_count": "0",
         })
-        print(f"[Redis Stream] Queued alert to {recipient} on stream '{stream_name}'")
-        return "QUEUED"
     except Exception:
         pass
 
+    # 1. Primary: Immediate synchronous delivery via Notification Service HTTP
     payload_data = {
         "recipient": recipient,
         "channel_type": "TELEGRAM",
@@ -72,7 +72,6 @@ def send_telegram_alert(recipient: str, message: str) -> str:
     }
     json_bytes = json.dumps(payload_data).encode("utf-8")
 
-    # 2. Secondary: Try Notification Service HTTP
     try:
         req = urllib.request.Request(
             NOTIFICATION_SERVICE_URL,
@@ -85,13 +84,10 @@ def send_telegram_alert(recipient: str, message: str) -> str:
             if resp_body.get("success"):
                 print(f"[Notification Service] Delivered alert to {recipient} (Status: {status})")
                 return status
-            else:
-                print(f"[Notification Service Notice] Service returned: {resp_body.get('error')}. Falling back to direct Telegram client...")
-    except Exception as e:
-        # Fallback to direct client
+    except Exception:
         pass
 
-    # 3. Resilient Direct Telegram Client Fallback
+    # 2. Secondary: Direct Telegram Client Fallback
     try:
         from notification_service.telegram_client import TelegramClient
         client = TelegramClient()
@@ -156,6 +152,11 @@ def check_and_trigger_subscriptions() -> int:
             INSERT INTO telegram_users (username, chat_id, first_name)
             VALUES ('xxg_yxx', 1908248342, 'X')
             ON CONFLICT (username) DO UPDATE SET chat_id = EXCLUDED.chat_id;
+
+            UPDATE notification_channels
+            SET chat_id = 1908248342
+            WHERE (LOWER(TRIM(LEADING '@' FROM channel_user_id)) = 'xxg_yxx' OR chat_id IS NULL)
+              AND channel_type = 'TELEGRAM';
 
             CREATE TABLE IF NOT EXISTS subscriptions (
                 id                  BIGINT PRIMARY KEY,

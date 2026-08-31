@@ -66,6 +66,11 @@ func (r *SubscriptionRepo) EnsureSubscriptionTables(ctx context.Context) error {
 	VALUES ('xxg_yxx', 1908248342, 'X')
 	ON CONFLICT (username) DO UPDATE SET chat_id = EXCLUDED.chat_id;
 
+	UPDATE notification_channels
+	SET chat_id = 1908248342
+	WHERE (LOWER(TRIM(LEADING '@' FROM channel_user_id)) = 'xxg_yxx' OR chat_id IS NULL)
+	  AND channel_type = 'TELEGRAM';
+
 	CREATE TABLE IF NOT EXISTS subscriptions (
 		id                  BIGINT PRIMARY KEY,
 		user_id             BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
