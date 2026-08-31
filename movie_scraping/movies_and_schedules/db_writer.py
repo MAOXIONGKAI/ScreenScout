@@ -199,8 +199,12 @@ class DatabaseWriter:
             duration = EXCLUDED.duration;
         """
 
+        current_year = datetime.now(ZoneInfo("Asia/Singapore")).year
         values = []
         for m in movies:
+            if m.release_date and m.release_date.year < current_year:
+                continue
+
             embedding_val = str(m.embedding) if m.embedding is not None else None
 
             if m.provider == "SHAW":

@@ -37,17 +37,29 @@ class DBCleaner:
         return count
 
     def clean_outdated_movies(self) -> int:
-        """Delete movies whose release_date is in the past and have no remaining schedules in the database."""
-        delete_query = """
-        DELETE FROM movies
-        WHERE release_date < (CURRENT_DATE AT TIME ZONE 'Asia/Singapore')::date
-          AND NOT EXISTS (
-              SELECT 1 FROM schedules WHERE schedules.movie_id = movies.id
-          );
-        """
+        """Delete movies released before current year or whose release_date is in the past with no remaining schedules."""
         with self._get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(delete_query)
+                # 1. Remove schedules tied to past-year movies to avoid FK constraint issues
+                cur.execute("""
+                DELETE FROM schedules
+                WHERE movie_id IN (
+                    SELECT id FROM movies 
+                    WHERE release_date < DATE_TRUNC('year', CURRENT_DATE AT TIME ZONE 'Asia/Singapore')
+                );
+                """)
+
+                # 2. Delete movies released before the current year or outdated movies without schedules
+                cur.execute("""
+                DELETE FROM movies
+                WHERE release_date < DATE_TRUNC('year', CURRENT_DATE AT TIME ZONE 'Asia/Singapore')
+                   OR (
+                       release_date < (CURRENT_DATE AT TIME ZONE 'Asia/Singapore')::date
+                       AND NOT EXISTS (
+                           SELECT 1 FROM schedules WHERE schedules.movie_id = movies.id
+                       )
+                   );
+                """)
                 count = cur.rowcount
             conn.commit()
         return count

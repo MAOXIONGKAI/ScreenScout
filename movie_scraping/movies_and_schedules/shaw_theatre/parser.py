@@ -113,15 +113,18 @@ def _parse_movie(raw: dict) -> Movie:
 
 
 def parse_movies(raw_movies: List[dict]) -> List[Movie]:
-    """Parse a list of raw Shaw API dicts into Movie objects."""
+    """Parse a list of raw Shaw API dicts into Movie objects, keeping only current year and upcoming movies."""
     if not raw_movies:
         return []
 
+    current_year = datetime.now(ZoneInfo("Asia/Singapore")).year
     parsed_movies = []
     seen_ids = set()
     for raw in raw_movies:
         try:
             m = _parse_movie(raw)
+            if m.release_date and m.release_date.year < current_year:
+                continue
             if m.id not in seen_ids:
                 seen_ids.add(m.id)
                 parsed_movies.append(m)

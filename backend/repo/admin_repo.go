@@ -30,9 +30,9 @@ func NewAdminRepo(pool *pgxpool.Pool, cache *cache.MovieCache) *AdminRepo {
 func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsResponse, error) {
 	query := `
 	SELECT 
-		(SELECT COUNT(*) FROM movies) AS total_movies,
-		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
-		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE NOT EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS coming_soon,
+		(SELECT COUNT(*) FROM movies WHERE release_date IS NULL OR release_date >= DATE_TRUNC('year', CURRENT_DATE)) AS total_movies,
+		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE (m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)) AND EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
+		(SELECT COUNT(DISTINCT m.id) FROM movies m WHERE (m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)) AND NOT EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS coming_soon,
 		(SELECT COUNT(*) FROM cinemas) AS total_cinemas,
 		(SELECT COUNT(DISTINCT name) FROM cinemas) AS total_providers,
 		(SELECT COUNT(*) FROM schedules WHERE start_date > CURRENT_DATE OR (start_date = CURRENT_DATE AND start_time >= CURRENT_TIME)) AS total_schedules,
@@ -107,6 +107,7 @@ func (r *AdminRepo) GetAdminStats(ctx context.Context) (*model.AdminStatsRespons
 		COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS now_showing,
 		COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM schedules s WHERE s.movie_id = m.id AND (s.start_date > CURRENT_DATE OR (s.start_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME)))) AS coming_soon
 	FROM movies m
+	WHERE m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)
 	GROUP BY UPPER(m.provider);
 	`
 	movieRows, err := r.Pool.Query(ctx, providerMoviesQuery)

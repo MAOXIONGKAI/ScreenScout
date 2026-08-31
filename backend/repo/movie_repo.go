@@ -117,6 +117,7 @@ WITH movie_status AS (
             ELSE 'coming_soon'
         END AS status
     FROM movies m
+    WHERE m.release_date IS NULL OR m.release_date >= DATE_TRUNC('year', CURRENT_DATE)
 )`
 
 	var conditions []string

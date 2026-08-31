@@ -103,14 +103,18 @@ def _parse_movie(raw: dict) -> Movie:
 
 
 def parse_movies(raw_movies: List[dict]) -> List[Movie]:
-    """Parse a list of raw GV API dicts into Movie objects."""
+    """Parse a list of raw GV API dicts into Movie objects, keeping only current year and upcoming movies."""
     if not raw_movies:
         return []
 
+    current_year = datetime.now(ZoneInfo("Asia/Singapore")).year
     parsed_movies = []
     for raw in raw_movies:
         try:
-            parsed_movies.append(_parse_movie(raw))
+            m = _parse_movie(raw)
+            if m.release_date and m.release_date.year < current_year:
+                continue
+            parsed_movies.append(m)
         except (KeyError, TypeError, ValueError) as e:
             title = raw.get("filmTitle", "unknown")
             print(f"Skipping movie '{title}': {e}")
