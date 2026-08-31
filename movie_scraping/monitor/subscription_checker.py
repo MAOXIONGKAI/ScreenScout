@@ -193,11 +193,18 @@ def check_and_trigger_subscriptions() -> int:
                 recipient           VARCHAR(255) NOT NULL,
                 message             TEXT NOT NULL,
                 status              VARCHAR(20) NOT NULL DEFAULT 'SENT',
+                is_read             BOOLEAN NOT NULL DEFAULT FALSE,
+                read_at             TIMESTAMPTZ,
                 created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            ALTER TABLE notification_logs ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE notification_logs ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+
             CREATE SEQUENCE IF NOT EXISTS notification_logs_id_seq START WITH 1 INCREMENT BY 1;
             ALTER TABLE notification_logs ALTER COLUMN id SET DEFAULT nextval('notification_logs_id_seq');
+            CREATE INDEX IF NOT EXISTS idx_notification_logs_user ON notification_logs(user_id);
+            CREATE INDEX IF NOT EXISTS idx_notification_logs_user_read ON notification_logs(user_id, is_read);
         """)
         conn.commit()
 

@@ -181,6 +181,29 @@ export interface Subscription {
   updated_at: string;
 }
 
+// InAppNotification represents a notification for display in the website UI
+export interface InAppNotification {
+  id: number;
+  subscription_id?: number;
+  user_id: number;
+  movie_query: string;
+  matched_movie_id?: number;
+  matched_movie_title?: string;
+  matched_movies?: MatchedMovieItem[];
+  message: string;
+  status: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+// NotificationsResponse payload
+export interface NotificationsResponse {
+  notifications: InAppNotification[];
+  unread_count: number;
+  total_count: number;
+}
+
+
 // Review represents a user review and rating for a movie
 export interface Review {
   id: number;

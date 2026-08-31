@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import NotificationBell from "./NotificationBell";
 import styles from "./Navbar.module.css";
 
 export default function Navbar() {
@@ -70,6 +71,7 @@ export default function Navbar() {
             <div className={styles.authGroup}>
               {user ? (
                 <>
+                  <NotificationBell />
                   <Link
                     href="/dashboard"
                     className={`${isAdmin ? styles.adminBadge : styles.userBadge} ${

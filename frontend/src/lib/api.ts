@@ -14,6 +14,8 @@ import {
   AdminStatsResponse,
   ScrapeResponse,
   CleanResponse,
+  InAppNotification,
+  NotificationsResponse,
 } from "./types";
 
 const API_BASE =
@@ -429,6 +431,91 @@ export async function triggerAdminClean(token: string): Promise<CleanResponse> {
   }
   return data;
 }
+
+// In-App Notifications API
+export async function fetchNotifications(
+  token: string,
+  limit: number = 50
+): Promise<NotificationsResponse> {
+  const res = await fetch(`${API_BASE}/api/notifications?limit=${limit}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to fetch notifications");
+  }
+  return {
+    notifications: data.notifications || [],
+    unread_count: data.unread_count || 0,
+    total_count: data.total_count || 0,
+  };
+}
+
+export async function markNotificationAsRead(
+  token: string,
+  id: number
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/notifications/${id}/read`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to mark notification as read");
+  }
+}
+
+export async function markAllNotificationsAsRead(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/notifications/read-all`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to mark all notifications as read");
+  }
+}
+
+export async function deleteNotification(
+  token: string,
+  id: number
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/notifications/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to delete notification");
+  }
+}
+
+export async function clearAllNotifications(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/notifications`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || "Failed to clear notifications");
+  }
+}
+
 
 
 

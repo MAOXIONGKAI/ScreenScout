@@ -237,6 +237,9 @@ export default function MonitoringsPage() {
         setActiveTab("active");
       }
       await loadUserData();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("screenscout:notifications-updated"));
+      }
       setTimeout(() => setSubSuccess(""), 5000);
     } catch (err: any) {
       const msg = err.message || "Failed to create subscription";
@@ -253,6 +256,9 @@ export default function MonitoringsPage() {
     try {
       await deleteSubscription(token, id);
       setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("screenscout:notifications-updated"));
+      }
     } catch (err: any) {
       showToast(err.message || "Failed to delete subscription", "Error", "error");
     }
@@ -271,6 +277,9 @@ export default function MonitoringsPage() {
       setSubscriptions((prev) => prev.filter((s) => s.id !== subToDelete.id));
       showToast(`Triggered task for "${subToDelete.query}" deleted.`, "Task Removed", "success");
       setSubToDelete(null);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("screenscout:notifications-updated"));
+      }
     } catch (err: any) {
       showToast(err.message || "Failed to delete subscription", "Error", "error");
     } finally {
@@ -304,6 +313,9 @@ export default function MonitoringsPage() {
       if (updated.triggered_at) {
         showToast(`Matched movie found! Alert dispatched to Telegram.`, "Alert Triggered", "success");
       }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("screenscout:notifications-updated"));
+      }
     } catch (err: any) {
       const msg = err.message || "Failed to update subscription";
       showToast(msg, "Action Restricted", "error");
@@ -317,6 +329,9 @@ export default function MonitoringsPage() {
     try {
       const res = await triggerSubscriptionScan(token);
       await loadUserData();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("screenscout:notifications-updated"));
+      }
       if (res.triggered_count > 0) {
         showToast(
           `Evaluated ${res.checked_count} active task(s). ${res.triggered_count} alert(s) dispatched to Telegram!`,

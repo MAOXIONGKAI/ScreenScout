@@ -109,13 +109,36 @@ func (r *SubscriptionRepo) EnsureSubscriptionTables(ctx context.Context) error {
 		recipient           VARCHAR(255) NOT NULL,
 		message             TEXT NOT NULL,
 		status              VARCHAR(20) NOT NULL DEFAULT 'SENT',
+		is_read             BOOLEAN NOT NULL DEFAULT FALSE,
+		read_at             TIMESTAMPTZ,
 		created_at          TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')
 	);
+
+	ALTER TABLE notification_logs ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE;
+	ALTER TABLE notification_logs ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
 
 	CREATE SEQUENCE IF NOT EXISTS notification_logs_id_seq START WITH 1 INCREMENT BY 1;
 	ALTER TABLE notification_logs ALTER COLUMN id SET DEFAULT nextval('notification_logs_id_seq');
 
 	CREATE INDEX IF NOT EXISTS idx_notification_logs_user ON notification_logs(user_id);
+	CREATE INDEX IF NOT EXISTS idx_notification_logs_user_read ON notification_logs(user_id, is_read);
+
+	-- Backfill any historical triggered subscriptions that might not have a notification log
+	INSERT INTO notification_logs (subscription_id, user_id, channel_type, recipient, message, status, is_read, created_at)
+	SELECT 
+		s.id, 
+		s.user_id, 
+		'WEBSITE', 
+		'In-App', 
+		CONCAT('🎬 Screening Alert: Your tracked movie keyword "', s.movie_query, '" matched ', COALESCE(s.matched_movie_title, 'new showtimes'), '!'),
+		'SENT',
+		FALSE,
+		COALESCE(s.triggered_at, s.updated_at, CURRENT_TIMESTAMP)
+	FROM subscriptions s
+	WHERE s.triggered_at IS NOT NULL
+	  AND NOT EXISTS (
+		  SELECT 1 FROM notification_logs nl WHERE nl.subscription_id = s.id
+	  );
 	`
 	_, err := r.Pool.Exec(ctx, query)
 	if err != nil {
@@ -592,3 +615,136 @@ func (r *SubscriptionRepo) DeleteSubscription(ctx context.Context, userID, subID
 	}
 	return nil
 }
+
+// GetNotificationsByUserID returns recent in-app notifications and unread count for a user.
+func (r *SubscriptionRepo) GetNotificationsByUserID(ctx context.Context, userID int64, limit int) ([]model.InAppNotification, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	query := `
+		SELECT 
+			nl.id, 
+			nl.subscription_id, 
+			nl.user_id, 
+			COALESCE(s.movie_query, '') AS movie_query,
+			s.matched_movie_id,
+			s.matched_movie_title,
+			COALESCE(s.matched_movies, '[]'::jsonb) AS matched_movies,
+			nl.message,
+			nl.status,
+			nl.is_read, 
+			nl.created_at
+		FROM notification_logs nl
+		LEFT JOIN subscriptions s ON nl.subscription_id = s.id
+		WHERE nl.user_id = $1
+		ORDER BY nl.created_at DESC
+		LIMIT $2
+	`
+
+	rows, err := r.Pool.Query(ctx, query, userID, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("get notifications: %w", err)
+	}
+	defer rows.Close()
+
+	var notifs []model.InAppNotification
+	for rows.Next() {
+		var n model.InAppNotification
+		var matchedMoviesJSON []byte
+		if err := rows.Scan(
+			&n.ID,
+			&n.SubscriptionID,
+			&n.UserID,
+			&n.MovieQuery,
+			&n.MatchedMovieID,
+			&n.MatchedMovieTitle,
+			&matchedMoviesJSON,
+			&n.Message,
+			&n.Status,
+			&n.IsRead,
+			&n.CreatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan notification: %w", err)
+		}
+
+		n.MatchedMovies = []model.MatchedMovieItem{}
+		if len(matchedMoviesJSON) > 0 {
+			_ = json.Unmarshal(matchedMoviesJSON, &n.MatchedMovies)
+		}
+		if len(n.MatchedMovies) == 0 && n.MatchedMovieID != nil && n.MatchedMovieTitle != nil {
+			n.MatchedMovies = []model.MatchedMovieItem{
+				{
+					ID:       *n.MatchedMovieID,
+					Title:    *n.MatchedMovieTitle,
+					Provider: "Cinema",
+					Status:   "now_showing",
+				},
+			}
+		}
+
+		n.CreatedAt = n.CreatedAt.In(sgtZone)
+		notifs = append(notifs, n)
+	}
+
+	if notifs == nil {
+		notifs = []model.InAppNotification{}
+	}
+
+	var unreadCount int
+	countQuery := `SELECT COUNT(*) FROM notification_logs WHERE user_id = $1 AND is_read = FALSE`
+	if err := r.Pool.QueryRow(ctx, countQuery, userID).Scan(&unreadCount); err != nil {
+		unreadCount = 0
+	}
+
+	return notifs, unreadCount, nil
+}
+
+// MarkNotificationAsRead marks an individual notification as read.
+func (r *SubscriptionRepo) MarkNotificationAsRead(ctx context.Context, userID, notificationID int64) error {
+	query := `
+		UPDATE notification_logs 
+		SET is_read = TRUE, read_at = CURRENT_TIMESTAMP 
+		WHERE id = $1 AND user_id = $2
+	`
+	_, err := r.Pool.Exec(ctx, query, notificationID, userID)
+	if err != nil {
+		return fmt.Errorf("mark notification as read: %w", err)
+	}
+	return nil
+}
+
+// MarkAllNotificationsAsRead marks all unread notifications for a user as read.
+func (r *SubscriptionRepo) MarkAllNotificationsAsRead(ctx context.Context, userID int64) error {
+	query := `
+		UPDATE notification_logs 
+		SET is_read = TRUE, read_at = CURRENT_TIMESTAMP 
+		WHERE user_id = $1 AND is_read = FALSE
+	`
+	_, err := r.Pool.Exec(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("mark all notifications as read: %w", err)
+	}
+	return nil
+}
+
+// DeleteNotification removes an individual notification record for a user.
+func (r *SubscriptionRepo) DeleteNotification(ctx context.Context, userID, notificationID int64) error {
+	query := `DELETE FROM notification_logs WHERE id = $1 AND user_id = $2`
+	_, err := r.Pool.Exec(ctx, query, notificationID, userID)
+	if err != nil {
+		return fmt.Errorf("delete notification: %w", err)
+	}
+	return nil
+}
+
+// ClearAllNotifications removes all notifications for a user.
+func (r *SubscriptionRepo) ClearAllNotifications(ctx context.Context, userID int64) error {
+	query := `DELETE FROM notification_logs WHERE user_id = $1`
+	_, err := r.Pool.Exec(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("clear all notifications: %w", err)
+	}
+	return nil
+}
+

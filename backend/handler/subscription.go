@@ -511,3 +511,127 @@ func (h *SubscriptionHandler) CheckSubscriptions(ctx context.Context, c *app.Req
 		TriggeredCount: triggeredCount,
 	})
 }
+
+// ListNotifications handles GET /api/notifications
+func (h *SubscriptionHandler) ListNotifications(ctx context.Context, c *app.RequestContext) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	userID := val.(int64)
+
+	limit := 50
+	if lStr := c.Query("limit"); lStr != "" {
+		if l, err := strconv.Atoi(lStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	notifs, unreadCount, err := h.SubRepo.GetNotificationsByUserID(ctx, userID, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.NotificationsResponse{
+		Notifications: notifs,
+		UnreadCount:   unreadCount,
+		TotalCount:    len(notifs),
+	})
+}
+
+// MarkNotificationAsRead handles POST /api/notifications/:id/read
+func (h *SubscriptionHandler) MarkNotificationAsRead(ctx context.Context, c *app.RequestContext) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	userID := val.(int64)
+
+	idStr := c.Param("id")
+	notifID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid notification id"})
+		return
+	}
+
+	if err := h.SubRepo.MarkNotificationAsRead(ctx, userID, notifID); err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "notification marked as read",
+	})
+}
+
+// MarkAllNotificationsAsRead handles POST /api/notifications/read-all
+func (h *SubscriptionHandler) MarkAllNotificationsAsRead(ctx context.Context, c *app.RequestContext) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	userID := val.(int64)
+
+	if err := h.SubRepo.MarkAllNotificationsAsRead(ctx, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "all notifications marked as read",
+	})
+}
+
+// DeleteNotification handles DELETE /api/notifications/:id
+func (h *SubscriptionHandler) DeleteNotification(ctx context.Context, c *app.RequestContext) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	userID := val.(int64)
+
+	idStr := c.Param("id")
+	notifID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid notification id"})
+		return
+	}
+
+	if err := h.SubRepo.DeleteNotification(ctx, userID, notifID); err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "notification deleted",
+	})
+}
+
+// ClearAllNotifications handles DELETE /api/notifications
+func (h *SubscriptionHandler) ClearAllNotifications(ctx context.Context, c *app.RequestContext) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	userID := val.(int64)
+
+	if err := h.SubRepo.ClearAllNotifications(ctx, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "all notifications cleared",
+	})
+}
+

@@ -112,3 +112,52 @@ func TestNotificationChannelJSON(t *testing.T) {
 		t.Errorf("Expected ChannelUserID '@movie_fanatic', got '%s'", parsed.ChannelUserID)
 	}
 }
+
+func TestInAppNotificationModelSerialization(t *testing.T) {
+	now := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
+	notif := InAppNotification{
+		ID:                1,
+		SubscriptionID:    strPtrInt64(10),
+		UserID:            5,
+		MovieQuery:        "Avatar",
+		MatchedMovieTitle: strPtr("Avatar: Fire and Ash"),
+		MatchedMovies: []MatchedMovieItem{
+			{
+				ID:          200,
+				Title:       "Avatar: Fire and Ash",
+				Provider:    "GV",
+				Status:      "advance_sales",
+				ReleaseDate: "2026-12-18",
+			},
+		},
+		Message:   "Screening Alert: Avatar is available!",
+		Status:    "SENT",
+		IsRead:    false,
+		CreatedAt: now,
+	}
+
+	data, err := json.Marshal(notif)
+	if err != nil {
+		t.Fatalf("Failed to marshal InAppNotification: %v", err)
+	}
+
+	var parsed InAppNotification
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("Failed to unmarshal InAppNotification: %v", err)
+	}
+
+	if parsed.MovieQuery != "Avatar" {
+		t.Errorf("Expected MovieQuery 'Avatar', got '%s'", parsed.MovieQuery)
+	}
+	if parsed.IsRead {
+		t.Error("Expected IsRead to be false")
+	}
+	if len(parsed.MatchedMovies) != 1 {
+		t.Fatalf("Expected 1 matched movie, got %d", len(parsed.MatchedMovies))
+	}
+}
+
+func strPtrInt64(i int64) *int64 {
+	return &i
+}
+

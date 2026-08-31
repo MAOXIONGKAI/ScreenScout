@@ -202,6 +202,16 @@ func main() {
 			subGroup.POST("/:id/toggle", middleware.AuthRequired(), subHandler.ToggleSubscription)
 			subGroup.POST("/check", subHandler.CheckSubscriptions)
 		}
+
+		// In-app Notification routes
+		notifsGroup := api.Group("/notifications", middleware.AuthRequired())
+		{
+			notifsGroup.GET("", subHandler.ListNotifications)
+			notifsGroup.POST("/read-all", subHandler.MarkAllNotificationsAsRead)
+			notifsGroup.POST("/:id/read", subHandler.MarkNotificationAsRead)
+			notifsGroup.DELETE("/:id", subHandler.DeleteNotification)
+			notifsGroup.DELETE("", subHandler.ClearAllNotifications)
+		}
 	}
 
 	fmt.Println("🚀 ScreenScout API server starting on :8080")
