@@ -1,0 +1,16 @@
+.git
+.github
+node_modules
+venv
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov
+.next
+frontend/node_modules
+frontend/.next
+backend/screenscout-api
